@@ -113,8 +113,9 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible,te
 .line-head{margin-top:12px;padding-bottom:6px;border-bottom:1px solid var(--line);font-size:12px;font-weight:500;color:var(--muted)}
 .line{padding:6px 0;border-bottom:1px solid var(--line)}
 .line .lbl,.crow .lbl{display:none}
-div.l-desc{display:flex;gap:6px;align-items:flex-end;min-width:0}
-div.l-desc .f{flex:1}
+div.l-desc{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;min-width:0}
+div.l-desc .f{flex:1 1 140px}
+.side-links{display:flex;flex-wrap:wrap;gap:6px;flex:none;min-width:0}
 .l-sub{display:block;min-width:0}
 .sub{display:block;font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
 .sub-note{display:block;text-align:right;font-size:11px;line-height:1.25;color:var(--muted)}
@@ -177,6 +178,12 @@ div.l-desc .f{flex:1}
   .l-sub{grid-area:sub;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 12px}
   .l-sub .sub{display:inline-block}
   .sub-note{text-align:left}
+  div.l-desc .f{flex:1 1 100%}
+  .l-desc .side-links{flex:1 1 100%}
+  .l-desc .ml{flex:1;text-align:center;padding:9px 8px}
+  .c-acts{justify-content:flex-start}
+  .c-acts .side-links{flex:1 1 100%}
+  .c-acts .side-links .ml{flex:1;text-align:center;padding:9px 8px}
   .crow.ins{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"name name" "unit pack" "price uprice" "stamp acts";padding:12px 0}
   .crow.mano{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"name name" "unit price" "stamp acts";padding:12px 0}
   .c-name{grid-area:name}.c-unit{grid-area:unit}.c-pack{grid-area:pack}.c-price{grid-area:price}.c-uprice{grid-area:uprice}.c-stamp{grid-area:stamp}.c-acts{grid-area:acts}
@@ -349,8 +356,8 @@ function mlUrl(q){
 }
 function gUrl(q){var s=String(q||'').trim();return 'https://www.google.com.ar/search?tbm=shop&q='+encodeURIComponent(s)}
 function sideLinks(q,title){
-  return '<a class="ml" data-side href="'+esc(mlUrl(q))+'" target="presup-lateral" rel="noopener" title="Buscar en MercadoLibre">ML ↗</a>'+
-    '<a class="ml" data-side data-g href="'+esc(gUrl(q))+'" target="presup-lateral" rel="noopener" title="Buscar en Google Shopping">Google ↗</a>';
+  return '<span class="side-links"><a class="ml" data-side href="'+esc(mlUrl(q))+'" target="presup-lateral" rel="noopener" title="Buscar en MercadoLibre">ML ↗</a>'+
+    '<a class="ml" data-side data-g href="'+esc(gUrl(q))+'" target="presup-lateral" rel="noopener" title="Buscar en Google Shopping">Google ↗</a></span>';
 }
 function setSideLinks(row,q){
   var a=row.querySelector('a[data-side]:not([data-g])'),g=row.querySelector('a[data-g]');
