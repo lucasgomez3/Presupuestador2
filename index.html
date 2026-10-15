@@ -324,9 +324,24 @@ div.l-desc .f{flex:1 1 140px}
     </div>
   </section>
 
+  <div class="backup" id="cloudPanel">
+    <h3>Guardar en la nube</h3>
+    <p class="hint" style="margin:0">Guarda el catálogo y los presupuestos en tu propio servidor gratuito (Cloudflare) y los sincroniza entre tu compu y tu celular. Los pasos están en el README.</p>
+    <div class="row" style="align-items:flex-end">
+      <label class="f" style="flex:1 1 260px"><span class="lbl">Dirección del servidor</span><input id="cloudUrl" type="url" placeholder="https://presupuestador-ml.tu-usuario.workers.dev" autocomplete="off" spellcheck="false"></label>
+      <label class="f" style="flex:1 1 180px"><span class="lbl">Clave</span><input id="cloudToken" type="password" placeholder="La que inventaste" autocomplete="off" spellcheck="false"></label>
+    </div>
+    <div class="row">
+      <button type="button" class="btn primary" id="btnCloudOn">Conectar</button>
+      <button type="button" class="btn" id="btnCloudSync">Sincronizar ahora</button>
+      <button type="button" class="btn" id="btnCloudOff">Desconectar</button>
+    </div>
+    <p class="hint" id="cloudState" role="status" style="margin:8px 0 0"></p>
+  </div>
+
   <div class="backup">
     <h3>Copia de seguridad</h3>
-    <p class="hint" style="margin:0">Tus datos se guardan solo en este navegador. Bajá un archivo con el catálogo y los presupuestos, y cargalo si cambiás de compu o borrás los datos del navegador.</p>
+    <p class="hint" style="margin:0">Además de la nube, podés bajar un archivo. Bajá un archivo con el catálogo y los presupuestos, y cargalo si cambiás de compu o borrás los datos del navegador.</p>
     <div class="row">
       <button type="button" class="btn" id="btnBackup">Descargar copia</button>
       <button type="button" class="btn" id="btnRestore">Cargar copia</button>
@@ -450,11 +465,12 @@ function mode(){return S.pres.ajustes.compra==='entera'?'entera':'prop'}
 /* ---------- Guardado ---------- */
 var ref=null,saveTimer=0,saving=false,dirty=false;
 function setStatus(k){
+  if(cloudOn()&&cloudMsg){$('#saveState').textContent=cloudMsg;return}
   $('#saveState').textContent=k==='cloud'
     ?'Cambios guardados.'
     :'Por ahora se guardan solo en este navegador.';
 }
-function persist(){touched=true;saveLocal();dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(flush,700)}
+function persist(){touched=true;saveLocal();cloudChanged();dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(flush,700)}
 async function flush(){
   if(!ref)return;
   if(saving){clearTimeout(saveTimer);saveTimer=setTimeout(flush,400);return}
@@ -804,6 +820,106 @@ $('#btnSync').addEventListener('click',function(){
   toast(n?'Actualicé '+n+(n>1?' líneas':' línea')+' desde el catálogo.':'Los precios ya coinciden con el catálogo.');
 });
 
+/* ---------- Guardado en la nube (Cloudflare Worker + KV) ---------- */
+var CLOUD_KEY='presupuestador-nube';
+var cloud=(function(){try{var o=JSON.parse(localStorage.getItem(CLOUD_KEY)||'null');return o&&o.url&&o.token?o:null}catch(e){return null}})();
+var cloudMsg='',cloudTimer=0,cloudBusy=false,cloudHalt=false,cloudRev=0;
+function cloudOn(){return !!cloud}
+function saveCloudMeta(){try{if(cloud)localStorage.setItem(CLOUD_KEY,JSON.stringify(cloud));else localStorage.removeItem(CLOUD_KEY)}catch(e){}}
+function hhmm(iso){var d=iso?new Date(iso):new Date();return pad(d.getDate())+'/'+pad(d.getMonth()+1)+' '+pad(d.getHours())+':'+pad(d.getMinutes())}
+function setCloud(m){cloudMsg=m;$('#cloudState').textContent=m;setStatus('local')}
+async function cloudCall(method,path,body){
+  var res;
+  try{
+    res=await fetch(cloud.url+path,{method:method,headers:{'Authorization':'Bearer '+cloud.token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+  }catch(e){
+    throw {net:true,message:window.claude?'Esto no anda dentro de claude.ai. Usalo desde tu página de GitHub Pages.':'No pude conectar con el servidor. Revisá la dirección y tu conexión.'};
+  }
+  var j=null;try{j=await res.json()}catch(e){}
+  if(res.status===401)throw {status:401,message:'La clave es incorrecta.'};
+  if(res.status===409)throw {status:409,remote:j};
+  if(!res.ok)throw {status:res.status,message:(j&&j.error)||('El servidor respondió '+res.status+'.')};
+  return j;
+}
+function cloudChanged(){
+  if(!cloudOn())return;
+  cloudRev++;cloud.dirty=true;saveCloudMeta();
+  if(cloudHalt){setCloud('Sin sincronizar: hay un conflicto. Tocá “Sincronizar ahora” en Catálogo de precios.');return}
+  setCloud('Cambios sin subir a la nube…');
+  clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,4000);
+}
+function adoptRemote(r){
+  if(!valid(r.datos)){setCloud('Los datos de la nube no tienen un formato válido. No se cargaron.');return false}
+  S=r.datos;S.demo=false;saveLocal();
+  cloud.ver=r.version;cloud.dirty=false;saveCloudMeta();
+  renderAll();
+  return true;
+}
+async function resolveConflict(r){
+  cloudBusy=false;
+  if(confirm('Hay datos en la nube que no coinciden con los de este navegador (última vez: '+hhmm(r.updated)+').\n\nAceptar: cargar los de la nube. Se reemplaza lo que hay en este navegador.\nCancelar: ver la otra opción.')){
+    if(adoptRemote(r)){cloudHalt=false;setCloud('Datos de la nube cargados · '+hhmm(r.updated))}
+    return;
+  }
+  if(confirm('¿Subir los datos de este navegador y reemplazar los de la nube?\n\nAceptar: subir.\nCancelar: no hacer nada por ahora.')){
+    cloud.ver=r.version;cloud.dirty=true;saveCloudMeta();cloudHalt=false;await cloudPush();return;
+  }
+  cloudHalt=true;
+  setCloud('Sin sincronizar: hay un conflicto. Tocá “Sincronizar ahora” cuando quieras resolverlo.');
+}
+async function cloudPush(){
+  if(!cloudOn()||cloudHalt)return;
+  if(cloudBusy){clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,1500);return}
+  cloudBusy=true;var rev=cloudRev;
+  try{
+    var j=await cloudCall('PUT','/datos',{base:cloud.ver||0,datos:S});
+    cloud.ver=j.version;if(rev===cloudRev)cloud.dirty=false;saveCloudMeta();
+    cloudBusy=false;
+    setCloud(rev===cloudRev?'Guardado en la nube · '+hhmm(j.updated):'Cambios sin subir a la nube…');
+    if(rev!==cloudRev){clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,1500)}
+  }catch(e){
+    if(e.status===409){await resolveConflict(e.remote||{});return}
+    cloudBusy=false;
+    setCloud('No se pudo guardar en la nube: '+e.message+' Los cambios quedan en este navegador.');
+  }
+}
+async function cloudSync(){
+  if(!cloudOn())return;
+  if(cloudBusy)return;
+  setCloud('Sincronizando…');
+  try{
+    var r=await cloudCall('GET','/datos');
+    if(!r.datos||r.version===0){cloud.ver=0;cloud.dirty=true;saveCloudMeta();await cloudPush();return}
+    if(r.version===cloud.ver){
+      if(cloud.dirty)await cloudPush();else setCloud('Al día con la nube · '+hhmm(r.updated));
+      return;
+    }
+    if(r.version>cloud.ver&&!cloud.dirty){
+      if(adoptRemote(r))setCloud('Se cargaron los datos más nuevos de la nube · '+hhmm(r.updated));
+      return;
+    }
+    await resolveConflict(r);
+  }catch(e){setCloud('No se pudo sincronizar: '+e.message)}
+}
+$('#btnCloudOn').addEventListener('click',function(){
+  var url=$('#cloudUrl').value.trim().replace(/\/+$/,''),token=$('#cloudToken').value.trim();
+  if(!/^https:\/\//i.test(url)||!token){toast('Completá la dirección (con https://) y la clave.');return}
+  cloud={url:url,token:token,ver:0,dirty:true};cloudHalt=false;saveCloudMeta();
+  cloudSync();
+});
+$('#btnCloudSync').addEventListener('click',function(){
+  if(!cloudOn()){toast('Primero conectá la nube.');return}
+  cloudHalt=false;cloudSync();
+});
+$('#btnCloudOff').addEventListener('click',function(){
+  cloud=null;saveCloudMeta();cloudMsg='';$('#cloudState').textContent='Desconectado. Tus datos siguen en este navegador.';
+  $('#cloudToken').value='';setStatus('local');
+});
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='visible'&&cloudOn()&&!cloud.dirty&&!cloudHalt)cloudSync();
+});
+if(cloud){$('#cloudUrl').value=cloud.url;$('#cloudToken').value=cloud.token}
+
 /* ---------- Copia de seguridad ---------- */
 $('#btnBackup').addEventListener('click',function(){
   var data=JSON.stringify({app:'presupuestador-electrico',version:2,fecha:todayISO(),datos:S},null,2);
@@ -864,6 +980,7 @@ function renderAll(){
 renderAll();
 setStatus('local');
 initDb();
+if(cloudOn())cloudSync();
 })();
 </script>
 </body>
