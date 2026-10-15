@@ -1,0 +1,916 @@
+<title>Presupuestador Eléctrico</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  /* Diseño: cabecera fija con pestañas y total; a la izquierda los datos y las líneas, a la derecha ajustes y totales. Los tres colores de cable (marrón, celeste, verde/amarillo) marcan cada sección. */
+  --bg:#f1f2ef;
+  --surface:#ffffff;
+  --surface-2:#f6f7f5;
+  --ink:#1c2530;
+  --muted:#5b6672;
+  --line:#d9ddd7;
+  --celeste:#1c6fae;
+  --brown:#8b5a2b;
+  --earth:#2d7a49;
+  --yellow:#d9b300;
+  --warn:#8f6400;
+  --danger:#b3261e;
+  --on-accent:#ffffff;
+  --f-display:'Barlow Condensed','Arial Narrow',sans-serif;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#11161b;--surface:#192028;--surface-2:#1f2832;--ink:#e7ebef;--muted:#9aa6b2;--line:#2c3743;
+    --celeste:#5aa9e6;--brown:#c88e55;--earth:#5fbf82;--yellow:#e8c73a;--warn:#e0b04a;--danger:#f2867f;--on-accent:#0e151b;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11161b;--surface:#192028;--surface-2:#1f2832;--ink:#e7ebef;--muted:#9aa6b2;--line:#2c3743;
+  --celeste:#5aa9e6;--brown:#c88e55;--earth:#5fbf82;--yellow:#e8c73a;--warn:#e0b04a;--danger:#f2867f;--on-accent:#0e151b;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);padding-block:0 40px}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* Cabecera */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.top .wrap{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px 28px;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand h1{margin:0;font:700 24px/1 var(--f-display);text-transform:uppercase;letter-spacing:.04em}
+.wires{display:inline-flex;gap:3px;flex:none}
+.wires i{display:block;width:5px;height:24px;border-radius:2px;background:var(--brown)}
+.wires i:nth-child(2){background:var(--celeste)}
+.wires i:nth-child(3){background:repeating-linear-gradient(180deg,var(--earth) 0 6px,var(--yellow) 6px 12px)}
+.tabs{display:flex;gap:4px}
+.tabs button{font:600 14px var(--f-body);color:var(--muted);background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--celeste)}
+.topTotal{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.topTotal span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.topTotal strong{font:500 20px var(--f-mono);font-variant-numeric:tabular-nums}
+@media (max-width:700px){
+  .top .wrap{grid-template-columns:1fr auto}
+  .tabs{grid-column:1/-1;order:3}
+  .brand h1{font-size:21px}
+}
+
+/* Estructura */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start;padding-block:20px}
+.col{display:grid;gap:16px;min-width:0}
+.side{display:grid;gap:16px;position:sticky;top:76px;min-width:0}
+@media (max-width:960px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .side{position:static}
+}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;min-width:0}
+.h{display:flex;align-items:center;gap:10px;margin:0 0 4px;font:700 22px/1.1 var(--f-display);text-transform:uppercase;letter-spacing:.04em;text-wrap:balance}
+.stub{width:26px;height:6px;border-radius:3px;background:var(--celeste);flex:none}
+.stub.brown{background:var(--brown)}
+.stub.earth{background:repeating-linear-gradient(90deg,var(--earth) 0 5px,var(--yellow) 5px 10px)}
+.hint{margin:0 0 4px;color:var(--muted);font-size:13px;max-width:65ch}
+.info{margin:10px 0 0;font-size:13px;color:var(--ink);max-width:70ch}
+.info:empty{display:none}
+
+/* Campos */
+.f{display:flex;flex-direction:column;gap:3px;min-width:0}
+.lbl{font-size:12px;color:var(--muted);font-weight:500}
+input,select{font:inherit;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:8px 10px;min-width:0;width:100%}
+input[type=number]{text-align:right;font-family:var(--f-mono)}
+input[type=checkbox]{width:auto;accent-color:var(--celeste)}
+input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid var(--celeste);outline-offset:1px}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:12px}
+.adj{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.adj .wide{grid-column:1/-1}
+.chk{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px}
+
+/* Botones */
+.btn{font:600 14px var(--f-body);padding:8px 14px;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--celeste);border-color:var(--celeste);color:var(--on-accent)}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.small{padding:5px 9px;font-size:13px}
+.x{width:32px;height:32px;flex:none;border:1px solid transparent;background:none;color:var(--muted);font-size:20px;line-height:1;border-radius:4px;cursor:pointer}
+.x:hover{color:var(--danger);border-color:var(--line)}
+.x.armed{width:auto;padding:0 8px;font-size:13px;font-weight:600;color:var(--danger);border-color:var(--danger)}
+.ml{flex:none;font-size:12px;font-weight:600;color:var(--celeste);text-decoration:none;border:1px solid var(--line);border-radius:4px;padding:7px 8px;white-space:nowrap;background:var(--surface)}
+.ml:hover{border-color:var(--celeste)}
+
+/* Líneas de presupuesto */
+.line-head,.line{display:grid;gap:8px;align-items:center}
+.line-head.mat,.line.mat{grid-template-columns:minmax(0,1fr) 72px 64px 84px 124px 124px 32px}
+.line-head.mo,.line.mo{grid-template-columns:minmax(0,1fr) 78px 70px 124px 112px 32px}
+.line-head{margin-top:12px;padding-bottom:6px;border-bottom:1px solid var(--line);font-size:12px;font-weight:500;color:var(--muted)}
+.line{padding:6px 0;border-bottom:1px solid var(--line)}
+.line .lbl,.crow .lbl{display:none}
+div.l-desc{display:flex;gap:6px;align-items:flex-end;min-width:0}
+div.l-desc .f{flex:1}
+.l-sub{display:block;min-width:0}
+.sub{display:block;font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+.sub-note{display:block;text-align:right;font-size:11px;line-height:1.25;color:var(--muted)}
+.sub-note:empty{display:none}
+.empty{margin:0;padding:14px 0 4px;color:var(--muted)}
+.adds{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+.adds input{flex:1 1 240px;width:auto}
+
+/* Totales */
+.tot{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:12px 0 0}
+.tot .r{display:contents}
+.tot dt{color:var(--muted)}
+.tot dd{margin:0;text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.tot .sep{grid-column:1/-1;border-top:1px solid var(--line);margin:2px 0}
+.tot .grand dt{color:var(--ink);font:700 20px/1.2 var(--f-display);text-transform:uppercase;letter-spacing:.04em}
+.tot .grand dd{font-size:24px;font-weight:500}
+.actions{display:grid;gap:8px;margin-top:16px}
+.confirm{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;font-size:14px}
+.confirm span{flex:1 1 100%}
+.fallback{width:100%;min-height:150px;margin-top:10px;font:13px/1.4 var(--f-mono);color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:10px}
+
+/* Catálogo */
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.toolbar input{flex:1 1 220px;width:auto}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{border:0;background:var(--surface);color:var(--muted);padding:8px 14px;font:600 14px var(--f-body);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--celeste);color:var(--on-accent)}
+.newitem{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.newitem .n-name{flex:1 1 260px}
+.newitem .n-unit{flex:0 0 90px}
+.newitem .n-pack{flex:0 0 110px}
+.newitem .n-price{flex:0 0 170px}
+.crow-head,.crow{display:grid;gap:8px;align-items:center}
+.crow-head.ins,.crow.ins{grid-template-columns:minmax(0,1fr) 70px 84px 124px 108px 150px auto}
+.crow-head.mano,.crow.mano{grid-template-columns:minmax(0,1fr) 84px 130px 160px auto}
+.crow-head{margin-top:12px;padding-bottom:6px;border-bottom:1px solid var(--line);font-size:12px;font-weight:500;color:var(--muted)}
+.crow{padding:6px 0;border-bottom:1px solid var(--line)}
+.c-uprice{min-width:0}
+.uprice{display:block;font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums;font-size:13px}
+.c-acts{display:flex;gap:6px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.stamp{font-size:12px;color:var(--muted)}
+.stamp.ex,.stamp.warn{color:var(--warn)}
+.stamp small{display:block;font-size:11px;line-height:1.3}
+.ml-conn{margin-top:12px;border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+.ml-conn summary{cursor:pointer;font-weight:600;font-size:14px}
+.ml-conn .row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-top:10px}
+.ml-conn .row .f{flex:1 1 280px}
+.ml-conn p{margin:10px 0 0}
+.ml-status{margin:10px 0 0;font-size:13px;white-space:pre-wrap;max-width:80ch}
+.ml-status:empty{display:none}
+
+/* Avisos */
+.note{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;margin-top:16px;padding:12px 14px;border:1px dashed var(--warn);border-radius:6px;background:var(--surface)}
+.note p{margin:0;flex:1 1 300px}
+.note div{display:flex;gap:8px;flex-wrap:wrap}
+.foot{margin:20px 0 0;color:var(--muted);font-size:13px}
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(92vw,520px);padding:10px 16px;border-radius:6px;background:var(--ink);color:var(--bg);font-size:14px;z-index:20}
+
+/* Móvil */
+@media (max-width:720px){
+  input,select{font-size:16px}
+  .line-head,.crow-head{display:none}
+  .line .lbl,.crow .lbl{display:block}
+  .line.mat{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 32px;grid-template-areas:"desc desc desc x" "qty unit pack pack" "price price price price" "sub sub sub sub";padding:12px 0}
+  .line.mo{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.5fr) 32px;grid-template-areas:"desc desc desc x" "qty unit price price" "sub sub sub sub";padding:12px 0}
+  .l-desc{grid-area:desc}.l-qty{grid-area:qty}.l-unit{grid-area:unit}.l-pack{grid-area:pack}.l-price{grid-area:price}.l-x{grid-area:x;align-self:end}
+  .l-sub{grid-area:sub;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 12px}
+  .l-sub .sub{display:inline-block}
+  .sub-note{text-align:left}
+  .crow.ins{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"name name" "unit pack" "price uprice" "stamp acts";padding:12px 0}
+  .crow.mano{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"name name" "unit price" "stamp acts";padding:12px 0}
+  .c-name{grid-area:name}.c-unit{grid-area:unit}.c-pack{grid-area:pack}.c-price{grid-area:price}.c-uprice{grid-area:uprice}.c-stamp{grid-area:stamp}.c-acts{grid-area:acts}
+}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><span class="wires" aria-hidden="true"><i></i><i></i><i></i></span><h1>Presupuestador eléctrico</h1></div>
+    <div class="tabs" role="tablist" aria-label="Secciones">
+      <button type="button" role="tab" id="tabBtnP" data-tab="p" aria-selected="true" aria-controls="tab-p">Presupuesto</button>
+      <button type="button" role="tab" id="tabBtnC" data-tab="c" aria-selected="false" aria-controls="tab-c">Catálogo de precios</button>
+    </div>
+    <div class="topTotal"><span>Total</span><strong id="topTotal">$ 0</strong></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="tab-p" role="tabpanel" aria-labelledby="tabBtnP">
+    <div id="demoNote" class="note" hidden>
+      <p>Este es un presupuesto de ejemplo con precios de referencia. Cargá tus precios reales en el catálogo antes de usarlo con un cliente.</p>
+      <div>
+        <button type="button" class="btn small primary" id="btnClearDemo">Empezar de cero</button>
+        <button type="button" class="btn small" id="btnKeepDemo">Entendido</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="col">
+        <div class="panel">
+          <h2 class="h"><span class="stub"></span>Datos del trabajo</h2>
+          <div class="meta">
+            <label class="f"><span class="lbl">Número</span><input data-m="numero" autocomplete="off"></label>
+            <label class="f"><span class="lbl">Fecha</span><input data-m="fecha" type="date"></label>
+            <label class="f"><span class="lbl">Cliente</span><input data-m="cliente" autocomplete="off" placeholder="Nombre del cliente"></label>
+            <label class="f"><span class="lbl">Obra o dirección</span><input data-m="obra" autocomplete="off" placeholder="Qué se va a hacer y dónde"></label>
+            <label class="f"><span class="lbl">Tipo de trabajo</span>
+              <select data-m="tipo">
+                <option>Instalación nueva</option>
+                <option>Ampliación</option>
+                <option>Reparación</option>
+                <option>Mantenimiento</option>
+                <option>Certificación o habilitación</option>
+              </select>
+            </label>
+            <label class="f"><span class="lbl">Validez (días)</span><input data-m="validez" type="number" min="1" step="1" inputmode="numeric"></label>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2 class="h"><span class="stub"></span>Materiales</h2>
+          <p class="hint">Cargá el precio de la presentación (el rollo, la bobina o la caja) y cuántas unidades trae. La app calcula cuánto cuesta lo que usás. Tocá “ML ↗” para ver el precio en MercadoLibre.</p>
+          <div class="line-head mat" aria-hidden="true"><span>Descripción</span><span style="text-align:right">Cant. que usás</span><span>Unidad</span><span style="text-align:right">Viene en</span><span style="text-align:right">Precio presentación ($)</span><span style="text-align:right">Costo</span><span></span></div>
+          <div id="matList"></div>
+          <div class="adds">
+            <input id="addMat" list="dlMat" placeholder="Agregar insumo del catálogo…" aria-label="Agregar insumo del catálogo" autocomplete="off">
+            <button type="button" class="btn" id="btnBlankMat">+ Línea en blanco</button>
+            <button type="button" class="btn" id="btnMlMat">Actualizar precios desde MercadoLibre</button>
+          </div>
+          <p class="ml-status" id="mlStatusMat" role="status"></p>
+          <p class="info" id="matInfo"></p>
+        </div>
+
+        <div class="panel">
+          <h2 class="h"><span class="stub brown"></span>Mano de obra</h2>
+          <p class="hint">Cobrá por boca, por hora o por trabajo completo: la unidad es libre en cada línea.</p>
+          <div class="line-head mo" aria-hidden="true"><span>Tarea</span><span style="text-align:right">Cant.</span><span>Unidad</span><span style="text-align:right">Precio unit. ($)</span><span style="text-align:right">Subtotal</span><span></span></div>
+          <div id="moList"></div>
+          <div class="adds">
+            <input id="addMo" list="dlMo" placeholder="Agregar tarea del catálogo…" aria-label="Agregar tarea del catálogo" autocomplete="off">
+            <button type="button" class="btn" id="btnBlankMo">+ Línea en blanco</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="side">
+        <div class="panel">
+          <h2 class="h"><span class="stub"></span>Ajustes</h2>
+          <div class="adj">
+            <label class="f wide"><span class="lbl">Cómo contar los materiales</span>
+              <select data-a="compra">
+                <option value="prop">Solo lo que uso (proporcional)</option>
+                <option value="entera">Presentaciones enteras (lo que compro)</option>
+              </select>
+            </label>
+            <label class="f"><span class="lbl">Ganancia sobre materiales (%)</span><input data-a="margen" type="number" min="0" step="any" inputmode="decimal"></label>
+            <label class="f"><span class="lbl">Imprevistos (%)</span><input data-a="imprevistos" type="number" min="0" step="any" inputmode="decimal"></label>
+            <label class="f"><span class="lbl">IVA (%)</span><input data-a="iva" type="number" min="0" step="any" inputmode="decimal"></label>
+            <label class="f"><span class="lbl">Traslado ($)</span><input data-a="traslado" type="number" min="0" step="any" inputmode="decimal"></label>
+          </div>
+          <label class="chk"><input type="checkbox" data-a="ivaOn"> Sumar IVA al total</label>
+        </div>
+
+        <div class="panel">
+          <h2 class="h"><span class="stub earth"></span>Totales</h2>
+          <dl class="tot" id="tot"></dl>
+          <div class="actions">
+            <button type="button" class="btn primary" id="btnCopy">Copiar resumen para el cliente</button>
+            <button type="button" class="btn" id="btnSync">Actualizar precios desde el catálogo</button>
+            <button type="button" class="btn" id="btnNew">Nuevo presupuesto</button>
+          </div>
+          <div class="confirm" id="confirmNew" hidden>
+            <span>Se borran las líneas del presupuesto actual. El catálogo no se toca.</span>
+            <button type="button" class="btn small danger" id="btnNewYes">Sí, empezar uno nuevo</button>
+            <button type="button" class="btn small" id="btnNewNo">Cancelar</button>
+          </div>
+          <textarea id="fallback" class="fallback" readonly hidden aria-label="Resumen para copiar"></textarea>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section id="tab-c" role="tabpanel" aria-labelledby="tabBtnC" hidden>
+    <div class="panel" style="margin-top:20px">
+      <h2 class="h"><span class="stub"></span>Catálogo de precios</h2>
+      <p class="hint">Guardá el precio de la presentación tal como la vende MercadoLibre (por ejemplo, un rollo de 100 m) y cuántas unidades trae. La app calcula el precio por unidad. Si cambiás el precio, la fecha se actualiza sola.</p>
+      <details class="ml-conn" id="mlConn">
+        <summary>Conexión con MercadoLibre</summary>
+        <p class="hint">Para actualizar precios con un botón hace falta un servidor intermedio que guarda tus credenciales de MercadoLibre. Los pasos para crearlo están en el README del proyecto.</p>
+        <div class="row">
+          <label class="f"><span class="lbl">URL del servidor intermedio</span><input id="mlProxy" type="url" placeholder="https://presupuestador-ml.tu-usuario.workers.dev" autocomplete="off" spellcheck="false"></label>
+          <button type="button" class="btn" id="btnMlTest">Probar conexión</button>
+        </div>
+      </details>
+      <div class="toolbar">
+        <div class="seg" role="group" aria-label="Tipo de ítem">
+          <button type="button" id="segIns" aria-pressed="true">Insumos</button>
+          <button type="button" id="segMo" aria-pressed="false">Mano de obra</button>
+        </div>
+        <input id="cSearch" type="search" placeholder="Buscar en el catálogo" aria-label="Buscar en el catálogo" autocomplete="off">
+        <button type="button" class="btn primary" id="btnMlAll">Actualizar todos desde MercadoLibre</button>
+      </div>
+      <p class="ml-status" id="mlStatus" role="status"></p>
+      <div class="newitem">
+        <label class="f n-name"><span class="lbl">Nuevo ítem</span><input id="nName" autocomplete="off" placeholder="Nombre del insumo"></label>
+        <label class="f n-unit"><span class="lbl">Unidad</span><input id="nUnit" autocomplete="off" placeholder="m"></label>
+        <label class="f n-pack" id="nPackWrap"><span class="lbl">Viene en</span><input id="nPack" type="number" min="0" step="any" inputmode="decimal" placeholder="100"></label>
+        <label class="f n-price"><span class="lbl" id="nPriceLbl">Precio presentación ($)</span><input id="nPrice" type="number" min="0" step="any" inputmode="decimal"></label>
+        <button type="button" class="btn primary" id="nAdd">Agregar a insumos</button>
+      </div>
+      <div id="catHead"></div>
+      <div id="catList"></div>
+    </div>
+  </section>
+
+  <p class="foot">Los presupuestos y el catálogo se guardan solos. <span id="saveState"></span></p>
+</main>
+
+<datalist id="dlMat"></datalist>
+<datalist id="dlMo"></datalist>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function(){
+'use strict';
+
+var KEY='presupuestador-electrico-v2';
+var $=function(s){return document.querySelector(s)};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+var money=new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0});
+var money2=new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',minimumFractionDigits:0,maximumFractionDigits:2});
+function uid(){return Math.random().toString(36).slice(2,9)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function num(v){var n=parseFloat(String(v).replace(',','.'));return isFinite(n)?n:0}
+function pad(n){return String(n).padStart(2,'0')}
+function todayISO(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function dmy(iso){if(!iso)return '';var p=iso.split('-');return p[2]+'/'+p[1]+'/'+p[0]}
+function fmtQ(n){return (Math.round(n*100)/100).toLocaleString('es-AR')}
+function mlUrl(q){
+  var s=String(q||'').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  return s?'https://listado.mercadolibre.com.ar/'+s:'https://www.mercadolibre.com.ar/';
+}
+function clone(o){return JSON.parse(JSON.stringify(o))}
+
+/* Costo de una línea de material.
+   Proporcional: precio de la presentación / unidades que trae x unidades que uso.
+   Entera: presentaciones completas que hay que comprar (se redondea hacia arriba). */
+function matCost(l,mode){
+  var q=num(l.cant),pk=num(l.pack)||1,pr=num(l.precio);
+  if(mode==='entera')return Math.ceil(q/pk-1e-9)*pr;
+  return q*pr/pk;
+}
+function unitPrice(c){return num(c.precio)/(num(c.pack)||1)}
+
+/* ---------- Datos de partida ---------- */
+function seed(){
+  var ins=[
+    ['Cable unipolar 1,5 mm²','m',100,80000],
+    ['Cable unipolar 2,5 mm²','m',100,120000],
+    ['Cable unipolar 4 mm²','m',100,190000],
+    ['Cable tipo taller 3x2,5 mm²','m',50,180000],
+    ['Caño corrugado 3/4"','m',25,11250],
+    ['Caja rectangular embutir 5x10','u',1,900],
+    ['Módulo tomacorriente 10 A','u',1,3500],
+    ['Módulo punto de luz 10 A','u',1,3200],
+    ['Térmica 2x16 A','u',1,9500],
+    ['Térmica 2x25 A','u',1,10500],
+    ['Disyuntor diferencial 2x25 A 30 mA','u',1,38000],
+    ['Tablero embutir 8 módulos','u',1,16000],
+    ['Plafón LED 18 W','u',1,8500],
+    ['Lámpara LED 9 W','u',1,2200],
+    ['Jabalina 5/8" x 1,5 m','u',1,14000],
+    ['Cinta aisladora','u',1,1500]
+  ].map(function(r,i){return {id:'i'+i,tipo:'insumo',nombre:r[0],unidad:r[1],pack:r[2],precio:r[3],fecha:'',ejemplo:true}});
+  var man=[
+    ['Boca de luz o tomacorriente (cañería, cableado y colocación)','boca',25000],
+    ['Colocación de artefacto','u',12000],
+    ['Colocación de tablero con térmicas','u',90000],
+    ['Cambio de térmica o diferencial','u',30000],
+    ['Instalación de jabalina y puesta a tierra','u',80000],
+    ['Detección y reparación de falla','hs',20000],
+    ['Visita y diagnóstico','u',25000],
+    ['Hora de oficial electricista','hs',18000],
+    ['Hora de ayudante','hs',10000]
+  ].map(function(r,i){return {id:'t'+i,tipo:'mano',nombre:r[0],unidad:r[1],precio:r[2],fecha:'',ejemplo:true}});
+  function mat(c,cant){return {id:uid(),catId:c.id,desc:c.nombre,unidad:c.unidad,cant:cant,pack:c.pack,precio:c.precio}}
+  function mo(c,cant){return {id:uid(),catId:c.id,desc:c.nombre,unidad:c.unidad,cant:cant,precio:c.precio}}
+  return {
+    demo:true,
+    catalogo:ins.concat(man),
+    pres:{
+      numero:'0001',fecha:todayISO(),cliente:'Cliente de ejemplo',obra:'Cocina: circuito nuevo de tomacorrientes',
+      tipo:'Instalación nueva',validez:15,
+      materiales:[mat(ins[1],40),mat(ins[4],25),mat(ins[5],6),mat(ins[6],6),mat(ins[9],1),mat(ins[15],1)],
+      mano:[mo(man[0],6),mo(man[3],1)],
+      ajustes:{compra:'prop',margen:25,imprevistos:5,iva:21,ivaOn:true,traslado:0}
+    }
+  };
+}
+function valid(o){return !!(o&&Array.isArray(o.catalogo)&&o.pres&&Array.isArray(o.pres.materiales)&&Array.isArray(o.pres.mano)&&o.pres.ajustes)}
+function loadLocal(){try{var r=localStorage.getItem(KEY);if(!r)return null;var o=JSON.parse(r);return valid(o)?o:null}catch(e){return null}}
+function saveLocal(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+
+var S=loadLocal()||seed();
+var touched=false;
+function mode(){return S.pres.ajustes.compra==='entera'?'entera':'prop'}
+
+/* ---------- Guardado ---------- */
+var ref=null,saveTimer=0,saving=false,dirty=false;
+function setStatus(k){
+  $('#saveState').textContent=k==='cloud'
+    ?'Cambios guardados.'
+    :'Por ahora se guardan solo en este navegador.';
+}
+function persist(){touched=true;saveLocal();dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(flush,700)}
+async function flush(){
+  if(!ref)return;
+  if(saving){clearTimeout(saveTimer);saveTimer=setTimeout(flush,400);return}
+  if(!dirty)return;
+  saving=true;dirty=false;
+  try{await ref.set(clone(S));setStatus('cloud')}
+  catch(e){setStatus('local')}
+  finally{saving=false;if(dirty){clearTimeout(saveTimer);saveTimer=setTimeout(flush,400)}}
+}
+async function initDb(){
+  try{
+    if(!window.claude||!window.claude.use)return;
+    var db=await window.claude.use('db');
+    if(!db)return;
+    var r=db.doc('app/state');
+    var snap=await r.get();
+    var adopt=false,o=null;
+    if(snap.exists){o=clone(snap.data());adopt=valid(o)&&!touched}
+    if(adopt){S=o;saveLocal();renderAll()}else{dirty=true}
+    ref=r;
+    if(dirty)await flush();else setStatus('cloud');
+  }catch(e){ref=null}
+}
+
+/* ---------- Cálculo ---------- */
+function calc(){
+  var p=S.pres,a=p.ajustes,m=mode();
+  var matProp=p.materiales.reduce(function(t,l){return t+matCost(l,'prop')},0);
+  var matEnt=p.materiales.reduce(function(t,l){return t+matCost(l,'entera')},0);
+  var mat=m==='entera'?matEnt:matProp;
+  var mo=p.mano.reduce(function(t,l){return t+num(l.cant)*num(l.precio)},0);
+  var gan=mat*num(a.margen)/100;
+  var tras=num(a.traslado);
+  var base=mat+gan+mo+tras;
+  var imp=base*num(a.imprevistos)/100;
+  var sub=base+imp;
+  var iva=a.ivaOn?sub*num(a.iva)/100:0;
+  return {mat:mat,matProp:matProp,matEnt:matEnt,gan:gan,mo:mo,tras:tras,imp:imp,sub:sub,iva:iva,total:sub+iva};
+}
+function renderTotals(){
+  var c=calc(),a=S.pres.ajustes,m=mode(),h='';
+  function row(l,v,cls){h+='<div class="r'+(cls?' '+cls:'')+'"><dt>'+esc(l)+'</dt><dd>'+money.format(v)+'</dd></div>'}
+  row(m==='entera'?'Materiales (presentaciones enteras)':'Materiales (lo que usás)',c.mat);
+  if(c.gan)row('Ganancia sobre materiales ('+num(a.margen)+'%)',c.gan);
+  row('Mano de obra',c.mo);
+  if(c.tras)row('Traslado',c.tras);
+  if(c.imp)row('Imprevistos ('+num(a.imprevistos)+'%)',c.imp);
+  h+='<div class="sep"></div>';
+  row('Subtotal',c.sub);
+  if(a.ivaOn)row('IVA ('+num(a.iva)+'%)',c.iva);
+  h+='<div class="sep"></div>';
+  row('Total',c.total,'grand');
+  $('#tot').innerHTML=h;
+  $('#topTotal').textContent=money.format(c.total);
+  var left=c.matEnt-c.matProp,info='';
+  if(S.pres.materiales.length&&left>0.5){
+    info=m==='entera'
+      ?'Estás contando las presentaciones enteras que comprás. Lo que realmente consumís vale '+money.format(c.matProp)+' y el resto ('+money.format(left)+') queda como sobrante.'
+      :'Si comprás las presentaciones enteras, los materiales te salen '+money.format(c.matEnt)+'. La diferencia ('+money.format(left)+') es sobrante que te queda para otra obra.';
+  }
+  $('#matInfo').textContent=info;
+}
+
+/* ---------- Líneas ---------- */
+function arr(kind){return kind==='mat'?S.pres.materiales:S.pres.mano}
+function listEl(kind){return $(kind==='mat'?'#matList':'#moList')}
+function matNote(l){
+  var pk=num(l.pack)||1,q=num(l.cant),u=l.unidad||'';
+  if(pk<=1||q<=0)return '';
+  if(mode()==='entera'){
+    var n=Math.ceil(q/pk-1e-9),sob=n*pk-q;
+    return n+' × '+fmtQ(pk)+' '+u+(sob>0?' · sobran '+fmtQ(sob)+' '+u:'');
+  }
+  return 'usás '+fmtQ(q)+' de '+fmtQ(pk)+' '+u+' ('+Math.round(q/pk*100)+'%)';
+}
+function lineHTML(kind,l){
+  if(kind==='mat'){
+    return '<div class="line mat" data-id="'+esc(l.id)+'">'+
+      '<div class="l-desc"><label class="f"><span class="lbl">Material</span><input data-k="desc" value="'+esc(l.desc)+'" placeholder="Material" aria-label="Descripción" autocomplete="off"></label>'+
+        '<a class="ml" href="'+esc(mlUrl(l.desc))+'" target="_blank" rel="noopener" title="Buscar en MercadoLibre">ML ↗</a></div>'+
+      '<label class="f l-qty"><span class="lbl">Cant. que usás</span><input data-k="cant" type="number" min="0" step="any" inputmode="decimal" value="'+esc(l.cant)+'" aria-label="Cantidad que usás"></label>'+
+      '<label class="f l-unit"><span class="lbl">Unidad</span><input data-k="unidad" value="'+esc(l.unidad)+'" aria-label="Unidad" autocomplete="off"></label>'+
+      '<label class="f l-pack"><span class="lbl">La presentación trae</span><input data-k="pack" type="number" min="0" step="any" inputmode="decimal" value="'+esc(l.pack==null?1:l.pack)+'" aria-label="Unidades que trae la presentación"></label>'+
+      '<label class="f l-price"><span class="lbl">Precio de la presentación ($)</span><input data-k="precio" type="number" min="0" step="any" inputmode="decimal" value="'+esc(l.precio)+'" aria-label="Precio de la presentación"></label>'+
+      '<div class="l-sub"><span class="lbl">Costo</span><output class="sub">'+money.format(matCost(l,mode()))+'</output><small class="sub-note">'+esc(matNote(l))+'</small></div>'+
+      '<button class="x l-x" type="button" data-del aria-label="Quitar línea">×</button>'+
+    '</div>';
+  }
+  return '<div class="line mo" data-id="'+esc(l.id)+'">'+
+    '<label class="f l-desc"><span class="lbl">Tarea</span><input data-k="desc" value="'+esc(l.desc)+'" placeholder="Tarea" aria-label="Descripción" autocomplete="off"></label>'+
+    '<label class="f l-qty"><span class="lbl">Cant.</span><input data-k="cant" type="number" min="0" step="any" inputmode="decimal" value="'+esc(l.cant)+'" aria-label="Cantidad"></label>'+
+    '<label class="f l-unit"><span class="lbl">Unidad</span><input data-k="unidad" value="'+esc(l.unidad)+'" aria-label="Unidad" autocomplete="off"></label>'+
+    '<label class="f l-price"><span class="lbl">Precio unit. ($)</span><input data-k="precio" type="number" min="0" step="any" inputmode="decimal" value="'+esc(l.precio)+'" aria-label="Precio unitario"></label>'+
+    '<div class="l-sub"><span class="lbl">Subtotal</span><output class="sub">'+money.format(num(l.cant)*num(l.precio))+'</output></div>'+
+    '<button class="x l-x" type="button" data-del aria-label="Quitar línea">×</button>'+
+  '</div>';
+}
+function renderLines(kind){
+  var a=arr(kind),el=listEl(kind);
+  el.innerHTML=a.length
+    ?a.map(function(l){return lineHTML(kind,l)}).join('')
+    :'<p class="empty">'+(kind==='mat'?'Todavía no cargaste materiales. Elegí uno del catálogo o agregá una línea en blanco.':'Todavía no cargaste tareas. Elegí una del catálogo o agregá una línea en blanco.')+'</p>';
+}
+function refreshRow(kind,row,l){
+  if(kind==='mat'){
+    row.querySelector('.sub').textContent=money.format(matCost(l,mode()));
+    row.querySelector('.sub-note').textContent=matNote(l);
+  }else{
+    row.querySelector('.sub').textContent=money.format(num(l.cant)*num(l.precio));
+  }
+}
+['mat','mo'].forEach(function(kind){
+  var el=listEl(kind);
+  el.addEventListener('input',function(e){
+    var inp=e.target.closest('input[data-k]');if(!inp)return;
+    var row=inp.closest('.line');
+    var l=arr(kind).find(function(x){return x.id===row.dataset.id});if(!l)return;
+    var k=inp.dataset.k;
+    l[k]=(k==='cant'||k==='precio'||k==='pack')?num(inp.value):inp.value;
+    if(k==='desc'&&kind==='mat'){var a=row.querySelector('.ml');if(a)a.href=mlUrl(l.desc)}
+    refreshRow(kind,row,l);
+    renderTotals();persist();
+  });
+  el.addEventListener('click',function(e){
+    var b=e.target.closest('[data-del]');if(!b)return;
+    var id=b.closest('.line').dataset.id,a=arr(kind);
+    var i=a.findIndex(function(x){return x.id===id});
+    if(i>=0)a.splice(i,1);
+    renderLines(kind);renderTotals();persist();
+  });
+});
+function addLine(kind,l){
+  arr(kind).push(l);
+  renderLines(kind);renderTotals();persist();
+}
+function addFromCat(c,kind){
+  var l={id:uid(),catId:c.id,desc:c.nombre,unidad:c.unidad,cant:1,precio:c.precio};
+  if(kind==='mat')l.pack=num(c.pack)||1;
+  addLine(kind,l);
+  toast('Agregado: '+c.nombre);
+}
+function addBlank(kind){
+  var l={id:uid(),catId:'',desc:'',unidad:'u',cant:1,precio:0};
+  if(kind==='mat')l.pack=1;
+  addLine(kind,l);
+  var rows=listEl(kind).querySelectorAll('.line');
+  var last=rows[rows.length-1];
+  if(last)last.querySelector('input[data-k="desc"]').focus();
+}
+function wireAdd(sel,tipo,kind){
+  var inp=$(sel);
+  inp.addEventListener('change',function(){
+    var v=inp.value.trim().toLowerCase();if(!v)return;
+    var c=S.catalogo.find(function(x){return x.tipo===tipo&&x.nombre.toLowerCase()===v});
+    if(c){addFromCat(c,kind);inp.value=''}
+    else toast('No encontré ese ítem en el catálogo. Elegilo de la lista o cargalo en la pestaña Catálogo.');
+  });
+}
+wireAdd('#addMat','insumo','mat');
+wireAdd('#addMo','mano','mo');
+$('#btnBlankMat').addEventListener('click',function(){addBlank('mat')});
+$('#btnBlankMo').addEventListener('click',function(){addBlank('mo')});
+
+/* ---------- Datos y ajustes ---------- */
+function renderMeta(){
+  $$('[data-m]').forEach(function(i){var v=S.pres[i.dataset.m];i.value=v==null?'':v});
+  $$('[data-a]').forEach(function(i){
+    var v=S.pres.ajustes[i.dataset.a];
+    if(i.type==='checkbox')i.checked=!!v;
+    else if(i.dataset.a==='compra')i.value=v==='entera'?'entera':'prop';
+    else i.value=v==null?'':v;
+  });
+}
+document.addEventListener('input',function(e){
+  var t=e.target;if(!t.dataset)return;
+  if(t.dataset.m){S.pres[t.dataset.m]=t.type==='number'?num(t.value):t.value;persist()}
+  else if(t.dataset.a){
+    var k=t.dataset.a;
+    S.pres.ajustes[k]=t.type==='checkbox'?t.checked:(k==='compra'?t.value:num(t.value));
+    if(k==='compra')renderLines('mat');
+    renderTotals();persist();
+  }
+});
+
+/* ---------- Catálogo ---------- */
+var cFilter='insumo',cQuery='';
+function stampHTML(c){
+  if(c.ml){
+    return 'MercadoLibre · '+esc(dmy(c.ml.fecha))+' · '+c.ml.n+(c.ml.n===1?' publicación':' publicaciones')+
+      '<small>Rango '+money.format(c.ml.min)+' a '+money.format(c.ml.max)+(c.ml.conf==='baja'?' · mucha variación, revisalo':'')+'</small>';
+  }
+  return esc(c.ejemplo?'Precio de ejemplo':(c.fecha?'Actualizado '+dmy(c.fecha):'Sin precio cargado'));
+}
+function stampClass(c){return 'stamp c-stamp'+(c.ejemplo?' ex':'')+(c.ml&&c.ml.conf==='baja'?' warn':'')}
+function catHeadHTML(){
+  if(cFilter==='insumo')return '<div class="crow-head ins" aria-hidden="true"><span>Nombre</span><span>Unidad</span><span style="text-align:right">Viene en</span><span style="text-align:right">Precio presentación ($)</span><span style="text-align:right">Por unidad</span><span>Estado</span><span></span></div>';
+  return '<div class="crow-head mano" aria-hidden="true"><span>Nombre</span><span>Unidad</span><span style="text-align:right">Precio unit. ($)</span><span>Estado</span><span></span></div>';
+}
+function catRowHTML(c){
+  var isI=c.tipo==='insumo';
+  var h='<div class="crow '+(isI?'ins':'mano')+'" data-id="'+esc(c.id)+'">'+
+    '<label class="f c-name"><span class="lbl">Nombre</span><input data-c="nombre" value="'+esc(c.nombre)+'" aria-label="Nombre" autocomplete="off"></label>'+
+    '<label class="f c-unit"><span class="lbl">Unidad</span><input data-c="unidad" value="'+esc(c.unidad)+'" aria-label="Unidad" autocomplete="off"></label>';
+  if(isI){
+    h+='<label class="f c-pack"><span class="lbl">La presentación trae</span><input data-c="pack" type="number" min="0" step="any" inputmode="decimal" value="'+esc(c.pack==null?1:c.pack)+'" aria-label="Unidades que trae la presentación"></label>';
+  }
+  h+='<label class="f c-price"><span class="lbl">'+(isI?'Precio de la presentación ($)':'Precio unit. ($)')+'</span><input data-c="precio" type="number" min="0" step="any" inputmode="decimal" value="'+esc(c.precio)+'" aria-label="Precio"></label>';
+  if(isI){
+    h+='<div class="c-uprice"><span class="lbl">Precio por unidad</span><output class="uprice">'+money2.format(unitPrice(c))+'</output></div>';
+  }
+  h+='<span class="'+stampClass(c)+'">'+stampHTML(c)+'</span>'+
+    '<div class="c-acts">'+(isI?'<a class="ml" href="'+esc(mlUrl(c.nombre))+'" target="_blank" rel="noopener" title="Abrir la búsqueda en MercadoLibre">ML ↗</a>':'')+
+      (isI?'<button class="btn small" type="button" data-mlupd title="Buscar el precio en MercadoLibre y actualizarlo">Precio ML</button>':'')+
+      '<button class="btn small" type="button" data-add>Al presupuesto</button>'+
+      '<button class="x" type="button" data-cdel aria-label="Quitar del catálogo">×</button></div>'+
+  '</div>';
+  return h;
+}
+function renderCatalog(){
+  var items=S.catalogo.filter(function(c){return c.tipo===cFilter&&c.nombre.toLowerCase().indexOf(cQuery)!==-1});
+  $('#catHead').innerHTML=items.length?catHeadHTML():'';
+  $('#catList').innerHTML=items.length?items.map(catRowHTML).join(''):'<p class="empty">No hay ítems que coincidan. Agregá uno con el formulario de arriba.</p>';
+}
+function refreshDatalists(){
+  function opts(t){return S.catalogo.filter(function(c){return c.tipo===t}).map(function(c){return '<option value="'+esc(c.nombre)+'"></option>'}).join('')}
+  $('#dlMat').innerHTML=opts('insumo');
+  $('#dlMo').innerHTML=opts('mano');
+}
+function setFilter(f){
+  cFilter=f;
+  var ins=f==='insumo';
+  $('#segIns').setAttribute('aria-pressed',String(ins));
+  $('#segMo').setAttribute('aria-pressed',String(!ins));
+  $('#nAdd').textContent=ins?'Agregar a insumos':'Agregar a mano de obra';
+  $('#nName').placeholder=ins?'Nombre del insumo':'Nombre de la tarea';
+  $('#nUnit').placeholder=ins?'m':'boca';
+  $('#nPackWrap').hidden=!ins;
+  $('#nPriceLbl').textContent=ins?'Precio presentación ($)':'Precio unit. ($)';
+  $('#btnMlAll').hidden=!ins;
+  renderCatalog();
+}
+$('#segIns').addEventListener('click',function(){setFilter('insumo')});
+$('#segMo').addEventListener('click',function(){setFilter('mano')});
+$('#cSearch').addEventListener('input',function(e){cQuery=e.target.value.trim().toLowerCase();renderCatalog()});
+$('#nAdd').addEventListener('click',function(){
+  var name=$('#nName').value.trim();
+  if(!name){toast('Escribí el nombre del ítem.');$('#nName').focus();return}
+  var pr=$('#nPrice').value;
+  var item={id:uid(),tipo:cFilter,nombre:name,unidad:$('#nUnit').value.trim()||'u',precio:num(pr),fecha:pr!==''?todayISO():'',ejemplo:false};
+  if(cFilter==='insumo')item.pack=num($('#nPack').value)||1;
+  S.catalogo.push(item);
+  $('#nName').value='';$('#nUnit').value='';$('#nPack').value='';$('#nPrice').value='';
+  cQuery='';$('#cSearch').value='';
+  renderCatalog();refreshDatalists();persist();
+  toast('Agregado al catálogo: '+name);
+});
+var catEl=$('#catList');
+catEl.addEventListener('input',function(e){
+  var inp=e.target.closest('input[data-c]');if(!inp)return;
+  var row=inp.closest('.crow');
+  var c=S.catalogo.find(function(x){return x.id===row.dataset.id});if(!c)return;
+  var k=inp.dataset.c;
+  if(k==='precio'||k==='pack'){
+    c[k]=num(inp.value);
+    if(k==='precio'){
+      c.fecha=todayISO();c.ejemplo=false;delete c.ml;
+      var st=row.querySelector('.stamp');st.className=stampClass(c);st.innerHTML=stampHTML(c);
+    }
+    var up=row.querySelector('.uprice');if(up)up.textContent=money2.format(unitPrice(c));
+  }else{
+    c[k]=inp.value;
+    if(k==='nombre'){var a=row.querySelector('.ml');if(a)a.href=mlUrl(c.nombre)}
+  }
+  persist();
+});
+catEl.addEventListener('change',refreshDatalists);
+catEl.addEventListener('click',function(e){
+  var row=e.target.closest('.crow');if(!row)return;
+  var c=S.catalogo.find(function(x){return x.id===row.dataset.id});if(!c)return;
+  if(e.target.closest('[data-mlupd]')){runMl([c.id]);return}
+  if(e.target.closest('[data-add]')){addFromCat(c,c.tipo==='insumo'?'mat':'mo');return}
+  var d=e.target.closest('[data-cdel]');
+  if(d){
+    if(!d.classList.contains('armed')){
+      d.classList.add('armed');d.textContent='¿Borrar?';
+      setTimeout(function(){if(d.isConnected){d.classList.remove('armed');d.textContent='×'}},3000);
+      return;
+    }
+    S.catalogo=S.catalogo.filter(function(x){return x.id!==c.id});
+    renderCatalog();refreshDatalists();persist();
+  }
+});
+
+/* ---------- Acciones ---------- */
+var tt=0;
+function toast(m){var t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true},4500)}
+
+function summaryText(){
+  var p=S.pres,a=p.ajustes,c=calc(),f=1+num(a.margen)/100,m=mode(),L=[];
+  L.push('PRESUPUESTO N° '+(p.numero||'-')+'  ·  '+dmy(p.fecha));
+  if(p.cliente)L.push('Cliente: '+p.cliente);
+  if(p.obra)L.push('Trabajo: '+p.obra+(p.tipo?' ('+p.tipo+')':''));
+  if(p.materiales.length){
+    L.push('','MATERIALES');
+    p.materiales.forEach(function(l){L.push('- '+(l.desc||'Sin descripción')+': '+fmtQ(num(l.cant))+' '+(l.unidad||'')+' = '+money.format(matCost(l,m)*f))});
+  }
+  if(p.mano.length){
+    L.push('','MANO DE OBRA');
+    p.mano.forEach(function(l){L.push('- '+(l.desc||'Sin descripción')+': '+fmtQ(num(l.cant))+' '+(l.unidad||'')+' x '+money.format(num(l.precio))+' = '+money.format(num(l.cant)*num(l.precio)))});
+  }
+  L.push('');
+  if(c.tras)L.push('Traslado: '+money.format(c.tras));
+  if(c.imp)L.push('Imprevistos ('+num(a.imprevistos)+'%): '+money.format(c.imp));
+  L.push('Subtotal: '+money.format(c.sub));
+  if(a.ivaOn)L.push('IVA ('+num(a.iva)+'%): '+money.format(c.iva));
+  L.push('TOTAL: '+money.format(c.total));
+  L.push('','Válido por '+(num(p.validez)||15)+' días. Precios en pesos argentinos.');
+  return L.join('\n');
+}
+async function copyText(t){
+  var fb=$('#fallback');
+  try{
+    await navigator.clipboard.writeText(t);
+    fb.hidden=true;
+    toast('Resumen copiado. Pegalo en WhatsApp o en un mail.');
+  }catch(e){
+    fb.hidden=false;fb.value=t;fb.focus();fb.select();
+    toast('No pude copiar solo. El texto quedó seleccionado: copialo con Ctrl+C.');
+  }
+}
+$('#btnCopy').addEventListener('click',function(){copyText(summaryText())});
+
+function syncLinesFromCatalog(){
+  var by={};S.catalogo.forEach(function(c){by[c.id]=c});
+  var n=0;
+  S.pres.materiales.forEach(function(l){
+    var c=by[l.catId];if(!c)return;
+    var pk=num(c.pack)||1;
+    if(num(l.precio)!==num(c.precio)||(num(l.pack)||1)!==pk){l.precio=c.precio;l.pack=pk;n++}
+  });
+  S.pres.mano.forEach(function(l){
+    var c=by[l.catId];
+    if(c&&num(l.precio)!==num(c.precio)){l.precio=c.precio;n++}
+  });
+  return n;
+}
+$('#btnSync').addEventListener('click',function(){
+  var n=syncLinesFromCatalog();
+  renderLines('mat');renderLines('mo');renderTotals();persist();
+  toast(n?'Actualicé '+n+(n>1?' líneas':' línea')+' desde el catálogo.':'Los precios ya coinciden con el catálogo.');
+});
+
+/* ---------- MercadoLibre, a través del servidor intermedio ---------- */
+var PROXY_KEY='presupuestador-ml-proxy';
+function getProxy(){try{return localStorage.getItem(PROXY_KEY)||''}catch(e){return ''}}
+function setProxy(v){try{localStorage.setItem(PROXY_KEY,v)}catch(e){}}
+function proxyBase(){return getProxy().trim().replace(/\/+$/,'')}
+function setMlStatus(t){$('#mlStatus').textContent=t;$('#mlStatusMat').textContent=t}
+function setMlBusy(on){$$('#btnMlAll,#btnMlMat,[data-mlupd]').forEach(function(b){b.disabled=on})}
+function mlQuery(c){
+  var q=String(c.nombre||'').replace(/[()"]/g,' ').replace(/\s+/g,' ').trim();
+  var pk=num(c.pack)||1;
+  if(pk>1)q+=' '+String(pk).replace('.',',')+' '+(c.unidad||'');
+  return q;
+}
+async function callProxy(path,opts){
+  var base=proxyBase();
+  if(!base)throw new Error('Primero cargá la URL del servidor intermedio en “Conexión con MercadoLibre”.');
+  var res;
+  try{res=await fetch(base+path,opts)}
+  catch(e){
+    throw new Error(window.claude
+      ?'Esta función no anda en la versión publicada dentro de claude.ai, porque el navegador bloquea las conexiones externas. Usala desde tu propio sitio, por ejemplo en GitHub Pages.'
+      :'No pude conectar con el servidor intermedio. Revisá la URL y que el worker esté publicado.');
+  }
+  var j=null;
+  try{j=await res.json()}catch(e){}
+  if(!res.ok)throw new Error((j&&j.error)||('El servidor intermedio respondió '+res.status+'.'));
+  return j;
+}
+var mlBusy=false;
+async function runMl(ids,extra){
+  if(mlBusy)return;
+  var items=S.catalogo.filter(function(c){return c.tipo==='insumo'&&ids.indexOf(c.id)!==-1});
+  if(!items.length){toast('No hay insumos para consultar.');return}
+  if(!proxyBase()){
+    $('#mlConn').open=true;
+    setMlStatus('Primero cargá la URL del servidor intermedio en “Conexión con MercadoLibre” y tocá “Probar conexión”.');
+    showTab('c');
+    return;
+  }
+  mlBusy=true;setMlBusy(true);
+  var byId={},ok=0,fails=[],lows=[],aviso='';
+  items.forEach(function(c){byId[c.id]=c});
+  try{
+    for(var i=0;i<items.length;i+=15){
+      var chunk=items.slice(i,i+15);
+      setMlStatus('Consultando MercadoLibre… '+Math.min(i+chunk.length,items.length)+' de '+items.length);
+      var data=await callProxy('/precios',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({items:chunk.map(function(c){return {id:c.id,query:mlQuery(c),pack:num(c.pack)||1,unidad:c.unidad||''}})})
+      });
+      if(data.aviso)aviso=data.aviso;
+      (data.results||[]).forEach(function(r){
+        var c=byId[r.id];if(!c)return;
+        if(r.ok){
+          c.precio=r.mediana;c.fecha=todayISO();c.ejemplo=false;
+          c.ml={n:r.n,min:r.min,max:r.max,conf:r.confianza,fecha:todayISO()};
+          ok++;
+          if(r.confianza==='baja')lows.push(c.nombre);
+        }else fails.push(c.nombre+': '+r.error);
+      });
+    }
+  }catch(e){fails.push(e.message)}
+  mlBusy=false;setMlBusy(false);
+  var n=syncLinesFromCatalog();
+  renderCatalog();renderLines('mat');renderTotals();persist();
+  var msg=ok+' de '+items.length+(items.length===1?' precio actualizado':' precios actualizados')+' desde MercadoLibre.';
+  if(n)msg+='\n'+n+(n>1?' líneas del presupuesto se actualizaron.':' línea del presupuesto se actualizó.');
+  if(aviso)msg+='\n'+aviso;
+  if(lows.length)msg+='\nRevisá estos precios, tienen mucha variación entre publicaciones: '+lows.join(', ')+'.';
+  if(fails.length)msg+='\nNo se pudieron actualizar:\n- '+fails.slice(0,8).join('\n- ')+(fails.length>8?'\n- y '+(fails.length-8)+' más':'');
+  if(extra)msg+='\n'+extra;
+  setMlStatus(msg);
+  toast(ok?'Precios actualizados desde MercadoLibre.':'No se actualizó ningún precio. Mirá el detalle.');
+}
+$('#btnMlAll').addEventListener('click',function(){
+  runMl(S.catalogo.filter(function(c){return c.tipo==='insumo'}).map(function(c){return c.id}));
+});
+$('#btnMlMat').addEventListener('click',function(){
+  var ids=[],sin=0;
+  S.pres.materiales.forEach(function(l){
+    var c=S.catalogo.find(function(x){return x.id===l.catId});
+    if(c){if(ids.indexOf(c.id)===-1)ids.push(c.id)}else sin++;
+  });
+  if(!ids.length){toast('Ninguna línea viene del catálogo. Agregá los materiales desde el catálogo para poder actualizarlos.');return}
+  runMl(ids,sin?sin+(sin>1?' líneas no vienen del catálogo y se dejaron como están.':' línea no viene del catálogo y se dejó como está.'):'');
+});
+$('#mlProxy').addEventListener('input',function(e){setProxy(e.target.value.trim())});
+$('#btnMlTest').addEventListener('click',async function(){
+  setProxy($('#mlProxy').value.trim());
+  setMlStatus('Probando la conexión…');
+  try{
+    var j=await callProxy('/salud',{method:'GET'});
+    var t=['El servidor intermedio responde.'];
+    t.push(j.credenciales?'Credenciales cargadas en el servidor.':'Faltan las credenciales ML_CLIENT_ID y ML_CLIENT_SECRET en el servidor.');
+    if(j.token)t.push('Token de MercadoLibre: '+j.token);
+    if(j.busqueda)t.push('Búsqueda en MercadoLibre: '+j.busqueda);
+    setMlStatus(t.join('\n'));
+  }catch(e){setMlStatus(e.message)}
+});
+$('#mlProxy').value=getProxy();
+
+function newBudget(){
+  var n=parseInt(S.pres.numero,10);
+  S.pres.numero=isFinite(n)?String(n+1).padStart(4,'0'):'';
+  S.pres.fecha=todayISO();S.pres.cliente='';S.pres.obra='';S.pres.tipo='Instalación nueva';S.pres.validez=15;
+  S.pres.materiales=[];S.pres.mano=[];
+  S.demo=false;
+  $('#confirmNew').hidden=true;$('#fallback').hidden=true;
+  renderAll();persist();
+}
+$('#btnNew').addEventListener('click',function(){$('#confirmNew').hidden=false});
+$('#btnNewNo').addEventListener('click',function(){$('#confirmNew').hidden=true});
+$('#btnNewYes').addEventListener('click',newBudget);
+$('#btnClearDemo').addEventListener('click',newBudget);
+$('#btnKeepDemo').addEventListener('click',function(){S.demo=false;$('#demoNote').hidden=true;persist()});
+
+/* ---------- Pestañas ---------- */
+function showTab(t){
+  ['p','c'].forEach(function(k){
+    $('#tab-'+k).hidden=k!==t;
+    var b=$('[data-tab="'+k+'"]');
+    b.setAttribute('aria-selected',String(k===t));
+  });
+}
+$$('[data-tab]').forEach(function(b){b.addEventListener('click',function(){showTab(b.dataset.tab)})});
+
+/* ---------- Inicio ---------- */
+function renderAll(){
+  renderMeta();renderLines('mat');renderLines('mo');renderTotals();renderCatalog();refreshDatalists();
+  $('#demoNote').hidden=!S.demo;
+}
+renderAll();
+setStatus('local');
+initDb();
+})();
+</script>
