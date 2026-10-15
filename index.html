@@ -101,6 +101,10 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible,te
 .x.armed{width:auto;padding:0 8px;font-size:13px;font-weight:600;color:var(--danger);border-color:var(--danger)}
 .ml{flex:none;font-size:12px;font-weight:600;color:var(--celeste);text-decoration:none;border:1px solid var(--line);border-radius:4px;padding:7px 8px;white-space:nowrap;background:var(--surface)}
 .ml:hover{border-color:var(--celeste)}
+.backup{margin-top:20px;border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+.backup h3{margin:0 0 4px;font-size:14px}
+.backup .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.backup input[type=file]{display:none}
 
 /* Líneas de presupuesto */
 .line-head,.line{display:grid;gap:8px;align-items:center}
@@ -154,13 +158,6 @@ div.l-desc .f{flex:1}
 .stamp{font-size:12px;color:var(--muted)}
 .stamp.ex,.stamp.warn{color:var(--warn)}
 .stamp small{display:block;font-size:11px;line-height:1.3}
-.ml-conn{margin-top:12px;border:1px solid var(--line);border-radius:6px;padding:10px 12px}
-.ml-conn summary{cursor:pointer;font-weight:600;font-size:14px}
-.ml-conn .row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-top:10px}
-.ml-conn .row .f{flex:1 1 280px}
-.ml-conn p{margin:10px 0 0}
-.ml-status{margin:10px 0 0;font-size:13px;white-space:pre-wrap;max-width:80ch}
-.ml-status:empty{display:none}
 
 /* Avisos */
 .note{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;margin-top:16px;padding:12px 14px;border:1px dashed var(--warn);border-radius:6px;background:var(--surface)}
@@ -231,15 +228,13 @@ div.l-desc .f{flex:1}
 
         <div class="panel">
           <h2 class="h"><span class="stub"></span>Materiales</h2>
-          <p class="hint">Cargá el precio de la presentación (el rollo, la bobina o la caja) y cuántas unidades trae. La app calcula cuánto cuesta lo que usás. Tocá “ML ↗” para ver el precio en MercadoLibre.</p>
+          <p class="hint">Cargá el precio de la presentación (el rollo, la bobina o la caja) y cuántas unidades trae. La app calcula cuánto cuesta lo que usás. Tocá “ML ↗” o “Google ↗” para ver el precio en una ventana al costado.</p>
           <div class="line-head mat" aria-hidden="true"><span>Descripción</span><span style="text-align:right">Cant. que usás</span><span>Unidad</span><span style="text-align:right">Viene en</span><span style="text-align:right">Precio presentación ($)</span><span style="text-align:right">Costo</span><span></span></div>
           <div id="matList"></div>
           <div class="adds">
             <input id="addMat" list="dlMat" placeholder="Agregar insumo del catálogo…" aria-label="Agregar insumo del catálogo" autocomplete="off">
             <button type="button" class="btn" id="btnBlankMat">+ Línea en blanco</button>
-            <button type="button" class="btn" id="btnMlMat">Actualizar precios desde MercadoLibre</button>
           </div>
-          <p class="ml-status" id="mlStatusMat" role="status"></p>
           <p class="info" id="matInfo"></p>
         </div>
 
@@ -295,24 +290,14 @@ div.l-desc .f{flex:1}
   <section id="tab-c" role="tabpanel" aria-labelledby="tabBtnC" hidden>
     <div class="panel" style="margin-top:20px">
       <h2 class="h"><span class="stub"></span>Catálogo de precios</h2>
-      <p class="hint">Guardá el precio de la presentación tal como la vende MercadoLibre (por ejemplo, un rollo de 100 m) y cuántas unidades trae. La app calcula el precio por unidad. Si cambiás el precio, la fecha se actualiza sola.</p>
-      <details class="ml-conn" id="mlConn">
-        <summary>Conexión con MercadoLibre</summary>
-        <p class="hint">Para actualizar precios con un botón hace falta un servidor intermedio que guarda tus credenciales de MercadoLibre. Los pasos para crearlo están en el README del proyecto.</p>
-        <div class="row">
-          <label class="f"><span class="lbl">URL del servidor intermedio</span><input id="mlProxy" type="url" placeholder="https://presupuestador-ml.tu-usuario.workers.dev" autocomplete="off" spellcheck="false"></label>
-          <button type="button" class="btn" id="btnMlTest">Probar conexión</button>
-        </div>
-      </details>
+      <p class="hint">Mirá el precio con “ML ↗” o “Google ↗” (se abren en una ventana al costado) y cargalo acá tal como lo vende la tienda (por ejemplo, un rollo de 100 m) y cuántas unidades trae. La app calcula el precio por unidad. Si cambiás el precio, la fecha se actualiza sola.</p>
       <div class="toolbar">
         <div class="seg" role="group" aria-label="Tipo de ítem">
           <button type="button" id="segIns" aria-pressed="true">Insumos</button>
           <button type="button" id="segMo" aria-pressed="false">Mano de obra</button>
         </div>
         <input id="cSearch" type="search" placeholder="Buscar en el catálogo" aria-label="Buscar en el catálogo" autocomplete="off">
-        <button type="button" class="btn primary" id="btnMlAll">Actualizar todos desde MercadoLibre</button>
       </div>
-      <p class="ml-status" id="mlStatus" role="status"></p>
       <div class="newitem">
         <label class="f n-name"><span class="lbl">Nuevo ítem</span><input id="nName" autocomplete="off" placeholder="Nombre del insumo"></label>
         <label class="f n-unit"><span class="lbl">Unidad</span><input id="nUnit" autocomplete="off" placeholder="m"></label>
@@ -324,6 +309,16 @@ div.l-desc .f{flex:1}
       <div id="catList"></div>
     </div>
   </section>
+
+  <div class="backup">
+    <h3>Copia de seguridad</h3>
+    <p class="hint" style="margin:0">Tus datos se guardan solo en este navegador. Bajá un archivo con el catálogo y los presupuestos, y cargalo si cambiás de compu o borrás los datos del navegador.</p>
+    <div class="row">
+      <button type="button" class="btn" id="btnBackup">Descargar copia</button>
+      <button type="button" class="btn" id="btnRestore">Cargar copia</button>
+      <input type="file" id="fileRestore" accept="application/json,.json">
+    </div>
+  </div>
 
   <p class="foot">Los presupuestos y el catálogo se guardan solos. <span id="saveState"></span></p>
 </main>
@@ -352,6 +347,27 @@ function mlUrl(q){
   var s=String(q||'').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
   return s?'https://listado.mercadolibre.com.ar/'+s:'https://www.mercadolibre.com.ar/';
 }
+function gUrl(q){var s=String(q||'').trim();return 'https://www.google.com.ar/search?tbm=shop&q='+encodeURIComponent(s)}
+function sideLinks(q,title){
+  return '<a class="ml" data-side href="'+esc(mlUrl(q))+'" target="presup-lateral" rel="noopener" title="Buscar en MercadoLibre">ML ↗</a>'+
+    '<a class="ml" data-side data-g href="'+esc(gUrl(q))+'" target="presup-lateral" rel="noopener" title="Buscar en Google Shopping">Google ↗</a>';
+}
+function setSideLinks(row,q){
+  var a=row.querySelector('a[data-side]:not([data-g])'),g=row.querySelector('a[data-g]');
+  if(a)a.href=mlUrl(q);if(g)g.href=gUrl(q);
+}
+function openSide(url){
+  var sw=screen.availWidth||1280,sh=screen.availHeight||800;
+  var w=Math.max(420,Math.round(sw*0.42)),l=(screen.availLeft||0)+sw-w,t=screen.availTop||0;
+  var win=window.open(url,'presup-lateral','popup=yes,width='+w+',height='+sh+',left='+l+',top='+t);
+  if(win){try{win.focus()}catch(e){}return true}
+  return false;
+}
+document.addEventListener('click',function(e){
+  var a=e.target.closest&&e.target.closest('a[data-side]');if(!a)return;
+  if(e.ctrlKey||e.metaKey||e.shiftKey||e.button)return;
+  if(openSide(a.href))e.preventDefault();
+});
 function clone(o){return JSON.parse(JSON.stringify(o))}
 
 /* Costo de una línea de material.
@@ -504,7 +520,7 @@ function lineHTML(kind,l){
   if(kind==='mat'){
     return '<div class="line mat" data-id="'+esc(l.id)+'">'+
       '<div class="l-desc"><label class="f"><span class="lbl">Material</span><input data-k="desc" value="'+esc(l.desc)+'" placeholder="Material" aria-label="Descripción" autocomplete="off"></label>'+
-        '<a class="ml" href="'+esc(mlUrl(l.desc))+'" target="_blank" rel="noopener" title="Buscar en MercadoLibre">ML ↗</a></div>'+
+        sideLinks(l.desc)+'</div>'+
       '<label class="f l-qty"><span class="lbl">Cant. que usás</span><input data-k="cant" type="number" min="0" step="any" inputmode="decimal" value="'+esc(l.cant)+'" aria-label="Cantidad que usás"></label>'+
       '<label class="f l-unit"><span class="lbl">Unidad</span><input data-k="unidad" value="'+esc(l.unidad)+'" aria-label="Unidad" autocomplete="off"></label>'+
       '<label class="f l-pack"><span class="lbl">La presentación trae</span><input data-k="pack" type="number" min="0" step="any" inputmode="decimal" value="'+esc(l.pack==null?1:l.pack)+'" aria-label="Unidades que trae la presentación"></label>'+
@@ -544,7 +560,7 @@ function refreshRow(kind,row,l){
     var l=arr(kind).find(function(x){return x.id===row.dataset.id});if(!l)return;
     var k=inp.dataset.k;
     l[k]=(k==='cant'||k==='precio'||k==='pack')?num(inp.value):inp.value;
-    if(k==='desc'&&kind==='mat'){var a=row.querySelector('.ml');if(a)a.href=mlUrl(l.desc)}
+    if(k==='desc'&&kind==='mat')setSideLinks(row,l.desc)
     refreshRow(kind,row,l);
     renderTotals();persist();
   });
@@ -636,8 +652,7 @@ function catRowHTML(c){
     h+='<div class="c-uprice"><span class="lbl">Precio por unidad</span><output class="uprice">'+money2.format(unitPrice(c))+'</output></div>';
   }
   h+='<span class="'+stampClass(c)+'">'+stampHTML(c)+'</span>'+
-    '<div class="c-acts">'+(isI?'<a class="ml" href="'+esc(mlUrl(c.nombre))+'" target="_blank" rel="noopener" title="Abrir la búsqueda en MercadoLibre">ML ↗</a>':'')+
-      (isI?'<button class="btn small" type="button" data-mlupd title="Buscar el precio en MercadoLibre y actualizarlo">Precio ML</button>':'')+
+    '<div class="c-acts">'+(isI?sideLinks(c.nombre):'')+
       '<button class="btn small" type="button" data-add>Al presupuesto</button>'+
       '<button class="x" type="button" data-cdel aria-label="Quitar del catálogo">×</button></div>'+
   '</div>';
@@ -663,7 +678,6 @@ function setFilter(f){
   $('#nUnit').placeholder=ins?'m':'boca';
   $('#nPackWrap').hidden=!ins;
   $('#nPriceLbl').textContent=ins?'Precio presentación ($)':'Precio unit. ($)';
-  $('#btnMlAll').hidden=!ins;
   renderCatalog();
 }
 $('#segIns').addEventListener('click',function(){setFilter('insumo')});
@@ -696,7 +710,7 @@ catEl.addEventListener('input',function(e){
     var up=row.querySelector('.uprice');if(up)up.textContent=money2.format(unitPrice(c));
   }else{
     c[k]=inp.value;
-    if(k==='nombre'){var a=row.querySelector('.ml');if(a)a.href=mlUrl(c.nombre)}
+    if(k==='nombre')setSideLinks(row,c.nombre)
   }
   persist();
 });
@@ -704,7 +718,6 @@ catEl.addEventListener('change',refreshDatalists);
 catEl.addEventListener('click',function(e){
   var row=e.target.closest('.crow');if(!row)return;
   var c=S.catalogo.find(function(x){return x.id===row.dataset.id});if(!c)return;
-  if(e.target.closest('[data-mlupd]')){runMl([c.id]);return}
   if(e.target.closest('[data-add]')){addFromCat(c,c.tipo==='insumo'?'mat':'mo');return}
   var d=e.target.closest('[data-cdel]');
   if(d){
@@ -777,107 +790,32 @@ $('#btnSync').addEventListener('click',function(){
   toast(n?'Actualicé '+n+(n>1?' líneas':' línea')+' desde el catálogo.':'Los precios ya coinciden con el catálogo.');
 });
 
-/* ---------- MercadoLibre, a través del servidor intermedio ---------- */
-var PROXY_KEY='presupuestador-ml-proxy';
-function getProxy(){try{return localStorage.getItem(PROXY_KEY)||''}catch(e){return ''}}
-function setProxy(v){try{localStorage.setItem(PROXY_KEY,v)}catch(e){}}
-function proxyBase(){return getProxy().trim().replace(/\/+$/,'')}
-function setMlStatus(t){$('#mlStatus').textContent=t;$('#mlStatusMat').textContent=t}
-function setMlBusy(on){$$('#btnMlAll,#btnMlMat,[data-mlupd]').forEach(function(b){b.disabled=on})}
-function mlQuery(c){
-  var q=String(c.nombre||'').replace(/[()"]/g,' ').replace(/\s+/g,' ').trim();
-  var pk=num(c.pack)||1;
-  if(pk>1)q+=' '+String(pk).replace('.',',')+' '+(c.unidad||'');
-  return q;
-}
-async function callProxy(path,opts){
-  var base=proxyBase();
-  if(!base)throw new Error('Primero cargá la URL del servidor intermedio en “Conexión con MercadoLibre”.');
-  var res;
-  try{res=await fetch(base+path,opts)}
-  catch(e){
-    throw new Error(window.claude
-      ?'Esta función no anda en la versión publicada dentro de claude.ai, porque el navegador bloquea las conexiones externas. Usala desde tu propio sitio, por ejemplo en GitHub Pages.'
-      :'No pude conectar con el servidor intermedio. Revisá la URL y que el worker esté publicado.');
-  }
-  var j=null;
-  try{j=await res.json()}catch(e){}
-  if(!res.ok)throw new Error((j&&j.error)||('El servidor intermedio respondió '+res.status+'.'));
-  return j;
-}
-var mlBusy=false;
-async function runMl(ids,extra){
-  if(mlBusy)return;
-  var items=S.catalogo.filter(function(c){return c.tipo==='insumo'&&ids.indexOf(c.id)!==-1});
-  if(!items.length){toast('No hay insumos para consultar.');return}
-  if(!proxyBase()){
-    $('#mlConn').open=true;
-    setMlStatus('Primero cargá la URL del servidor intermedio en “Conexión con MercadoLibre” y tocá “Probar conexión”.');
-    showTab('c');
-    return;
-  }
-  mlBusy=true;setMlBusy(true);
-  var byId={},ok=0,fails=[],lows=[],aviso='';
-  items.forEach(function(c){byId[c.id]=c});
-  try{
-    for(var i=0;i<items.length;i+=15){
-      var chunk=items.slice(i,i+15);
-      setMlStatus('Consultando MercadoLibre… '+Math.min(i+chunk.length,items.length)+' de '+items.length);
-      var data=await callProxy('/precios',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({items:chunk.map(function(c){return {id:c.id,query:mlQuery(c),pack:num(c.pack)||1,unidad:c.unidad||''}})})
-      });
-      if(data.aviso)aviso=data.aviso;
-      (data.results||[]).forEach(function(r){
-        var c=byId[r.id];if(!c)return;
-        if(r.ok){
-          c.precio=r.mediana;c.fecha=todayISO();c.ejemplo=false;
-          c.ml={n:r.n,min:r.min,max:r.max,conf:r.confianza,fecha:todayISO()};
-          ok++;
-          if(r.confianza==='baja')lows.push(c.nombre);
-        }else fails.push(c.nombre+': '+r.error);
-      });
-    }
-  }catch(e){fails.push(e.message)}
-  mlBusy=false;setMlBusy(false);
-  var n=syncLinesFromCatalog();
-  renderCatalog();renderLines('mat');renderTotals();persist();
-  var msg=ok+' de '+items.length+(items.length===1?' precio actualizado':' precios actualizados')+' desde MercadoLibre.';
-  if(n)msg+='\n'+n+(n>1?' líneas del presupuesto se actualizaron.':' línea del presupuesto se actualizó.');
-  if(aviso)msg+='\n'+aviso;
-  if(lows.length)msg+='\nRevisá estos precios, tienen mucha variación entre publicaciones: '+lows.join(', ')+'.';
-  if(fails.length)msg+='\nNo se pudieron actualizar:\n- '+fails.slice(0,8).join('\n- ')+(fails.length>8?'\n- y '+(fails.length-8)+' más':'');
-  if(extra)msg+='\n'+extra;
-  setMlStatus(msg);
-  toast(ok?'Precios actualizados desde MercadoLibre.':'No se actualizó ningún precio. Mirá el detalle.');
-}
-$('#btnMlAll').addEventListener('click',function(){
-  runMl(S.catalogo.filter(function(c){return c.tipo==='insumo'}).map(function(c){return c.id}));
+/* ---------- Copia de seguridad ---------- */
+$('#btnBackup').addEventListener('click',function(){
+  var data=JSON.stringify({app:'presupuestador-electrico',version:2,fecha:todayISO(),datos:S},null,2);
+  var url=URL.createObjectURL(new Blob([data],{type:'application/json'}));
+  var a=document.createElement('a');a.href=url;a.download='presupuestador-copia-'+todayISO()+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(url)},1000);
+  toast('Copia descargada. Guardala en un lugar seguro.');
 });
-$('#btnMlMat').addEventListener('click',function(){
-  var ids=[],sin=0;
-  S.pres.materiales.forEach(function(l){
-    var c=S.catalogo.find(function(x){return x.id===l.catId});
-    if(c){if(ids.indexOf(c.id)===-1)ids.push(c.id)}else sin++;
-  });
-  if(!ids.length){toast('Ninguna línea viene del catálogo. Agregá los materiales desde el catálogo para poder actualizarlos.');return}
-  runMl(ids,sin?sin+(sin>1?' líneas no vienen del catálogo y se dejaron como están.':' línea no viene del catálogo y se dejó como está.'):'');
+$('#btnRestore').addEventListener('click',function(){$('#fileRestore').click()});
+$('#fileRestore').addEventListener('change',function(e){
+  var f=e.target.files&&e.target.files[0];e.target.value='';
+  if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    var o=null;
+    try{o=JSON.parse(String(r.result));if(o&&o.app==='presupuestador-electrico'&&o.datos)o=o.datos}catch(err){o=null}
+    if(!valid(o)){toast('El archivo no es una copia válida de esta página.');return}
+    if(!confirm('Esto reemplaza el catálogo y el presupuesto actuales por los del archivo. ¿Seguir?'))return;
+    S=o;S.demo=false;
+    renderAll();persist();
+    toast('Copia cargada.');
+  };
+  r.onerror=function(){toast('No pude leer el archivo.')};
+  r.readAsText(f);
 });
-$('#mlProxy').addEventListener('input',function(e){setProxy(e.target.value.trim())});
-$('#btnMlTest').addEventListener('click',async function(){
-  setProxy($('#mlProxy').value.trim());
-  setMlStatus('Probando la conexión…');
-  try{
-    var j=await callProxy('/salud',{method:'GET'});
-    var t=['El servidor intermedio responde.'];
-    t.push(j.credenciales?'Credenciales cargadas en el servidor.':'Faltan las credenciales ML_CLIENT_ID y ML_CLIENT_SECRET en el servidor.');
-    if(j.token)t.push('Token de MercadoLibre: '+j.token);
-    if(j.busqueda)t.push('Búsqueda en MercadoLibre: '+j.busqueda);
-    setMlStatus(t.join('\n'));
-  }catch(e){setMlStatus(e.message)}
-});
-$('#mlProxy').value=getProxy();
 
 function newBudget(){
   var n=parseInt(S.pres.numero,10);
