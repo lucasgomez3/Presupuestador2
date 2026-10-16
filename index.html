@@ -179,8 +179,35 @@ div.l-desc .f{flex:1 1 140px}
 .foot{margin:20px 0 0;color:var(--muted);font-size:13px}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(92vw,520px);padding:10px 16px;border-radius:6px;background:var(--ink);color:var(--bg);font-size:14px;z-index:20}
 
+/* Secciones plegables */
+details.sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;border-radius:4px}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary:focus-visible{outline:2px solid var(--celeste);outline-offset:3px}
+details.sec>summary .h{margin:0;flex:0 0 auto;max-width:100%}
+details.sec[open]>summary{margin-bottom:4px}
+.sec-sum{flex:1 1 0;min-width:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:500 14px var(--f-mono);font-variant-numeric:tabular-nums;color:var(--muted)}
+.sec-sum:empty{display:none}
+details.sec[open]>summary .sec-sum{display:none}
+.chev{flex:none;width:9px;height:9px;margin:-4px 6px 0 auto;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s}
+details.sec[open]>summary .chev{transform:rotate(-135deg);margin-top:4px}
+details.sec:not([open])>summary .sec-sum:not(:empty)+.chev{margin-left:0}
+@media (prefers-reduced-motion:reduce){.chev{transition:none}}
+
+/* Entrada con Google */
+body.locked>header.top,body.locked>main,body.locked>.foot{display:none}
+.login{display:none;min-height:100vh;min-height:100dvh;align-items:center;justify-content:center;padding:24px 16px}
+body.locked .login{display:flex}
+.login-card{max-width:420px;width:100%;display:grid;gap:14px;justify-items:center;text-align:center;padding:28px 20px}
+.login-card h1{margin:0;font:700 26px/1.1 var(--f-display);text-transform:uppercase;letter-spacing:.04em}
+.login-card p{margin:0}
+.login-card .wires i{height:30px}
+#gBtn{min-height:44px}
+.acct{margin:8px 0 0;font-size:14px}
+
 /* Móvil */
 @media (max-width:720px){
+  .tabs{flex-wrap:wrap}
+  .tabs button{padding:8px 10px}
   input,select{font-size:16px}
   .line-head,.crow-head{display:none}
   .line .lbl,.crow .lbl{display:block}
@@ -201,8 +228,20 @@ div.l-desc .f{flex:1 1 140px}
   .c-name{grid-area:name}.c-unit{grid-area:unit}.c-pack{grid-area:pack}.c-price{grid-area:price}.c-uprice{grid-area:uprice}.c-stamp{grid-area:stamp}.c-acts{grid-area:acts}
 }
 </style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body>
+<body class="locked">
+
+<div class="login" id="login">
+  <div class="panel login-card">
+    <span class="wires" aria-hidden="true"><i></i><i></i><i></i></span>
+    <h1>Presupuestador eléctrico</h1>
+    <p>Entrá con tu cuenta de Google para usar la página.</p>
+    <div id="gBtn"></div>
+    <p class="hint" id="loginMsg" role="status"></p>
+    <p class="hint"><a href="privacidad.html">Política de privacidad</a> · <a href="terminos.html">Términos y condiciones</a></p>
+  </div>
+</div>
 
 <header class="top">
   <div class="wrap">
@@ -211,6 +250,7 @@ div.l-desc .f{flex:1 1 140px}
       <button type="button" role="tab" id="tabBtnP" data-tab="p" aria-selected="true" aria-controls="tab-p">Presupuesto</button>
       <button type="button" role="tab" id="tabBtnC" data-tab="c" aria-selected="false" aria-controls="tab-c">Catálogo de precios</button>
       <button type="button" role="tab" id="tabBtnH" data-tab="h" aria-selected="false" aria-controls="tab-h">Guardados</button>
+      <button type="button" role="tab" id="tabBtnN" data-tab="n" aria-selected="false" aria-controls="tab-n">Nube y copias</button>
     </div>
     <div class="topTotal"><span>Total</span><strong id="topTotal">$ 0</strong></div>
   </div>
@@ -228,8 +268,8 @@ div.l-desc .f{flex:1 1 140px}
 
     <div class="layout">
       <div class="col">
-        <div class="panel">
-          <h2 class="h"><span class="stub"></span>Datos del trabajo</h2>
+        <details class="panel sec" data-sec="datos" open>
+          <summary><h2 class="h"><span class="stub"></span>Datos del trabajo</h2><span class="sec-sum" id="sumDatos"></span><i class="chev" aria-hidden="true"></i></summary>
           <div class="meta">
             <label class="f"><span class="lbl">Número</span><input data-m="numero" autocomplete="off"></label>
             <label class="f"><span class="lbl">Fecha</span><input data-m="fecha" type="date"></label>
@@ -246,10 +286,10 @@ div.l-desc .f{flex:1 1 140px}
             </label>
             <label class="f"><span class="lbl">Validez (días)</span><input data-m="validez" type="number" min="1" step="1" inputmode="numeric"></label>
           </div>
-        </div>
+        </details>
 
-        <div class="panel">
-          <h2 class="h"><span class="stub"></span>Materiales</h2>
+        <details class="panel sec" data-sec="materiales" open>
+          <summary><h2 class="h"><span class="stub"></span>Materiales</h2><span class="sec-sum" id="sumMat"></span><i class="chev" aria-hidden="true"></i></summary>
           <p class="hint">Cargá el precio de la presentación (el rollo, la bobina o la caja) y cuántas unidades trae. La app calcula cuánto cuesta lo que usás. Tocá “ML ↗” o “Google ↗” para ver el precio en una ventana al costado.</p>
           <div class="line-head mat" aria-hidden="true"><span>Descripción</span><span style="text-align:right">Cant. que usás</span><span>Unidad</span><span style="text-align:right">Viene en</span><span style="text-align:right">Precio presentación ($)</span><span style="text-align:right">Costo</span><span></span></div>
           <div id="matList"></div>
@@ -258,10 +298,10 @@ div.l-desc .f{flex:1 1 140px}
             <button type="button" class="btn" id="btnBlankMat">+ Línea en blanco</button>
           </div>
           <p class="info" id="matInfo"></p>
-        </div>
+        </details>
 
-        <div class="panel">
-          <h2 class="h"><span class="stub brown"></span>Mano de obra</h2>
+        <details class="panel sec" data-sec="mano" open>
+          <summary><h2 class="h"><span class="stub brown"></span>Mano de obra</h2><span class="sec-sum" id="sumMo"></span><i class="chev" aria-hidden="true"></i></summary>
           <p class="hint">Cobrá por boca, por hora o por trabajo completo: la unidad es libre en cada línea.</p>
           <div class="line-head mo" aria-hidden="true"><span>Tarea</span><span style="text-align:right">Cant.</span><span>Unidad</span><span style="text-align:right">Precio unit. ($)</span><span style="text-align:right">Subtotal</span><span></span></div>
           <div id="moList"></div>
@@ -269,12 +309,12 @@ div.l-desc .f{flex:1 1 140px}
             <input id="addMo" list="dlMo" placeholder="Agregar tarea del catálogo…" aria-label="Agregar tarea del catálogo" autocomplete="off">
             <button type="button" class="btn" id="btnBlankMo">+ Línea en blanco</button>
           </div>
-        </div>
+        </details>
       </div>
 
       <aside class="side">
-        <div class="panel">
-          <h2 class="h"><span class="stub"></span>Ajustes</h2>
+        <details class="panel sec" data-sec="ajustes" open>
+          <summary><h2 class="h"><span class="stub"></span>Ajustes</h2><span class="sec-sum" id="sumAj"></span><i class="chev" aria-hidden="true"></i></summary>
           <div class="adj">
             <label class="f wide"><span class="lbl">Cómo contar los materiales</span>
               <select data-a="compra">
@@ -288,10 +328,10 @@ div.l-desc .f{flex:1 1 140px}
             <label class="f"><span class="lbl">Traslado ($)</span><input data-a="traslado" type="number" min="0" step="any" inputmode="decimal"></label>
           </div>
           <label class="chk"><input type="checkbox" data-a="ivaOn"> Sumar IVA al total</label>
-        </div>
+        </details>
 
-        <div class="panel">
-          <h2 class="h"><span class="stub earth"></span>Totales</h2>
+        <details class="panel sec" data-sec="totales" open>
+          <summary><h2 class="h"><span class="stub earth"></span>Totales</h2><span class="sec-sum" id="sumTot"></span><i class="chev" aria-hidden="true"></i></summary>
           <dl class="tot" id="tot"></dl>
           <div class="actions">
             <button type="button" class="btn primary" id="btnCopy">Copiar resumen para el cliente</button>
@@ -304,7 +344,7 @@ div.l-desc .f{flex:1 1 140px}
             <button type="button" class="btn small" id="btnNewNo">Cancelar</button>
           </div>
           <textarea id="fallback" class="fallback" readonly hidden aria-label="Resumen para copiar"></textarea>
-        </div>
+        </details>
       </aside>
     </div>
   </section>
@@ -341,47 +381,50 @@ div.l-desc .f{flex:1 1 140px}
     </div>
   </section>
 
-  <div class="backup" id="cloudPanel">
-    <h3>Guardar en la nube</h3>
-    <p class="hint" style="margin:0">Guarda el catálogo y los presupuestos en tu propio servidor gratuito (Cloudflare) y los sincroniza entre tu compu y tu celular. Los pasos están en el README.</p>
-    <div class="row" style="align-items:flex-end">
-      <label class="f" style="flex:1 1 260px"><span class="lbl">Dirección del servidor</span><input id="cloudUrl" type="url" placeholder="https://presupuestador-ml.tu-usuario.workers.dev" autocomplete="off" spellcheck="false"></label>
-      <label class="f" style="flex:1 1 180px"><span class="lbl">Clave</span><input id="cloudToken" type="password" placeholder="La que inventaste" autocomplete="off" spellcheck="false"></label>
+  <section id="tab-n" role="tabpanel" aria-labelledby="tabBtnN" hidden>
+    <div class="panel" style="margin-top:20px">
+      <h2 class="h"><span class="stub earth"></span>Nube y copias</h2>
+      <p class="hint">Acá están el guardado en la nube y las copias de seguridad. Cada cambio que hacés se sube solo.</p>
+    <div class="backup" id="cloudPanel">
+      <h3>Guardar en la nube</h3>
+      <p class="hint" style="margin:0">Guarda el catálogo y los presupuestos en tu propio servidor gratuito (Cloudflare) y los sincroniza entre tu compu y tu celular. Se conecta solo cuando entrás con Google.</p>
+      <p class="acct">Cuenta de Google: <b id="acctEmail">—</b></p>
+      <div class="row">
+        <button type="button" class="btn" id="btnCloudSync">Sincronizar ahora</button>
+        <button type="button" class="btn" id="btnLogout">Cerrar sesión</button>
+      </div>
+      <p class="hint" id="cloudState" role="status" style="margin:8px 0 0"></p>
+      <h3 style="margin:16px 0 4px;font-size:14px">Copias en la nube</h3>
+      <p class="hint" style="margin:0">El servidor guarda copias de tus datos solo (cada pocas horas y antes de cualquier cambio que quite datos). Elegí una para recuperarla, o guardá una cuando quieras. Se conservan las últimas 30.</p>
+      <div class="row" style="align-items:center">
+        <select id="copiasSel" aria-label="Copias en la nube" style="flex:1 1 260px;width:auto"></select>
+        <button type="button" class="btn" id="btnCopiaRec">Recuperar esta copia</button>
+      </div>
+      <div class="row">
+        <button type="button" class="btn" id="btnCopiaNueva">Guardar copia ahora</button>
+        <button type="button" class="btn" id="btnCopiaDel">Borrar esta copia</button>
+        <button type="button" class="btn" id="btnCopiasRef">Actualizar lista</button>
+      </div>
+      <p class="hint" id="copiasState" role="status" style="margin:8px 0 0"></p>
     </div>
-    <div class="row">
-      <button type="button" class="btn primary" id="btnCloudOn">Conectar</button>
-      <button type="button" class="btn" id="btnCloudSync">Sincronizar ahora</button>
-      <button type="button" class="btn" id="btnCloudOff">Desconectar</button>
-    </div>
-    <p class="hint" id="cloudState" role="status" style="margin:8px 0 0"></p>
-    <h3 style="margin:16px 0 4px;font-size:14px">Copias en la nube</h3>
-    <p class="hint" style="margin:0">El servidor guarda copias de tus datos solo (cada pocas horas y antes de cualquier cambio que quite datos). Elegí una para recuperarla, o guardá una cuando quieras. Se conservan las últimas 30.</p>
-    <div class="row" style="align-items:center">
-      <select id="copiasSel" aria-label="Copias en la nube" style="flex:1 1 260px;width:auto"></select>
-      <button type="button" class="btn" id="btnCopiaRec">Recuperar esta copia</button>
-    </div>
-    <div class="row">
-      <button type="button" class="btn" id="btnCopiaNueva">Guardar copia ahora</button>
-      <button type="button" class="btn" id="btnCopiaDel">Borrar esta copia</button>
-      <button type="button" class="btn" id="btnCopiasRef">Actualizar lista</button>
-    </div>
-    <p class="hint" id="copiasState" role="status" style="margin:8px 0 0"></p>
-  </div>
 
-  <div class="backup">
-    <h3>Copia de seguridad</h3>
-    <p class="hint" style="margin:0">Además de la nube, podés bajar un archivo. Bajá un archivo con el catálogo y los presupuestos, y cargalo si cambiás de compu o borrás los datos del navegador.</p>
-    <div class="row">
-      <button type="button" class="btn" id="btnBackup">Descargar copia</button>
-      <button type="button" class="btn" id="btnRestore">Cargar copia</button>
-      <input type="file" id="fileRestore" accept="application/json,.json">
+    <div class="backup">
+      <h3>Copia de seguridad</h3>
+      <p class="hint" style="margin:0">Además de la nube, podés bajar un archivo. Bajá un archivo con el catálogo y los presupuestos, y cargalo si cambiás de compu o borrás los datos del navegador.</p>
+      <div class="row">
+        <button type="button" class="btn" id="btnBackup">Descargar copia</button>
+        <button type="button" class="btn" id="btnRestore">Cargar copia</button>
+        <input type="file" id="fileRestore" accept="application/json,.json">
+      </div>
+      <p class="hint" style="margin:12px 0 0">Antes de reemplazar tus datos (al cargar la nube o una copia), la página guarda una copia automática en este navegador. Si algo salió mal, elegila acá.</p>
+      <div class="row" style="align-items:center">
+        <select id="prevSel" aria-label="Versión anterior" style="flex:1 1 260px;width:auto"></select>
+        <button type="button" class="btn" id="btnPrev">Recuperar esta versión</button>
+      </div>
     </div>
-    <p class="hint" style="margin:12px 0 0">Antes de reemplazar tus datos (al cargar la nube o una copia), la página guarda una copia automática en este navegador. Si algo salió mal, elegila acá.</p>
-    <div class="row" style="align-items:center">
-      <select id="prevSel" aria-label="Versión anterior" style="flex:1 1 260px;width:auto"></select>
-      <button type="button" class="btn" id="btnPrev">Recuperar esta versión</button>
+
     </div>
-  </div>
+  </section>
 
   <p class="foot">Los presupuestos y el catálogo se guardan solos. <span id="saveState"></span></p>
 </main>
@@ -393,6 +436,11 @@ div.l-desc .f{flex:1 1 140px}
 <script>
 (function(){
 'use strict';
+
+/* Configuración: pegá acá el ID de cliente de Google (termina en .apps.googleusercontent.com).
+   La dirección del worker de Cloudflare ya está puesta. */
+var GOOGLE_CLIENT_ID='PEGAR-AQUI-EL-ID-DE-CLIENTE.apps.googleusercontent.com';
+var WORKER_URL='https://presupuestador-ml.lucas-gomez-spti.workers.dev';
 
 var KEY='presupuestador-electrico-v2';
 var $=function(s){return document.querySelector(s)};
@@ -511,7 +559,7 @@ function setStatus(k){
     ?'Cambios guardados.'
     :'Por ahora se guardan solo en este navegador.';
 }
-function persist(){touched=true;saveLocal();cloudChanged();dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(flush,700)}
+function persist(){touched=true;saveLocal();renderSecSummaries();cloudChanged();dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(flush,700)}
 async function flush(){
   if(!ref)return;
   if(saving){clearTimeout(saveTimer);saveTimer=setTimeout(flush,400);return}
@@ -552,6 +600,14 @@ function calcP(p){
   var iva=a.ivaOn?sub*num(a.iva)/100:0;
   return {mat:mat,matProp:matProp,matEnt:matEnt,gan:gan,mo:mo,tras:tras,imp:imp,sub:sub,iva:iva,total:sub+iva};
 }
+function renderSecSummaries(){
+  var p=S.pres,a=p.ajustes,c=calc();
+  $('#sumDatos').textContent=[p.numero?'N° '+p.numero:'',p.cliente||''].filter(Boolean).join(' · ');
+  $('#sumMat').textContent=money.format(c.mat);
+  $('#sumMo').textContent=money.format(c.mo);
+  $('#sumAj').textContent='Ganancia '+num(a.margen)+'% · IVA '+(a.ivaOn?num(a.iva)+'%':'no');
+  $('#sumTot').textContent=money.format(c.total);
+}
 function renderTotals(){
   var c=calc(),a=S.pres.ajustes,m=mode(),h='';
   function row(l,v,cls){h+='<div class="r'+(cls?' '+cls:'')+'"><dt>'+esc(l)+'</dt><dd>'+money.format(v)+'</dd></div>'}
@@ -567,6 +623,7 @@ function renderTotals(){
   row('Total',c.total,'grand');
   $('#tot').innerHTML=h;
   $('#topTotal').textContent=money.format(c.total);
+  renderSecSummaries();
   var left=c.matEnt-c.matProp,info='';
   if(S.pres.materiales.length&&left>0.5){
     info=m==='entera'
@@ -906,21 +963,27 @@ $('#btnPrev').addEventListener('click',function(){
 
 /* ---------- Guardado en la nube (Cloudflare Worker + KV) ---------- */
 var CLOUD_KEY='presupuestador-nube';
-var cloud=(function(){try{var o=JSON.parse(localStorage.getItem(CLOUD_KEY)||'null');return o&&o.url&&o.token?o:null}catch(e){return null}})();
+var cloud=(function(){try{var o=JSON.parse(localStorage.getItem(CLOUD_KEY)||'null');if(o&&o.url){delete o.token;return o}return null}catch(e){return null}})();
 var cloudMsg='',cloudTimer=0,cloudBusy=false,cloudHalt=false,cloudRev=0;
 function cloudOn(){return !!cloud}
 function saveCloudMeta(){try{if(cloud)localStorage.setItem(CLOUD_KEY,JSON.stringify(cloud));else localStorage.removeItem(CLOUD_KEY)}catch(e){}}
 function hhmm(iso){var d=iso?new Date(iso):new Date();return pad(d.getDate())+'/'+pad(d.getMonth()+1)+' '+pad(d.getHours())+':'+pad(d.getMinutes())}
 function setCloud(m){cloudMsg=m;$('#cloudState').textContent=m;setStatus('local')}
 async function cloudCall(method,path,body){
+  var tok;
+  try{tok=await getToken()}catch(e){requireLogin(e.message);throw e}
   var res;
   try{
-    res=await fetch(cloud.url+path,{method:method,headers:{'Authorization':'Bearer '+cloud.token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+    res=await fetch(cloud.url+path,{method:method,headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
   }catch(e){
-    throw {net:true,message:window.claude?'Esto no anda dentro de claude.ai. Usalo desde tu página de GitHub Pages.':'No pude conectar con el servidor. Revisá la dirección y tu conexión.'};
+    throw {net:true,message:window.claude?'Esto no anda dentro de claude.ai. Usalo desde tu página de GitHub Pages.':'No pude conectar con el servidor. Revisá tu conexión.'};
   }
   var j=null;try{j=await res.json()}catch(e){}
-  if(res.status===401)throw {status:401,message:'La clave es incorrecta.'};
+  if(res.status===401){requireLogin((j&&j.error)||'Tu sesión de Google venció. Entrá de nuevo.');throw {status:401,message:(j&&j.error)||'Tu sesión de Google venció.'}}
+  if(res.status===403&&j&&j.codigo==='cuenta'){
+    try{google.accounts.id.disableAutoSelect()}catch(e){}
+    requireLogin(j.error);throw {status:403,message:j.error};
+  }
   if(res.status===409)throw {status:409,remote:j};
   if(!res.ok)throw {status:res.status,message:(j&&j.error)||('El servidor respondió '+res.status+'.')};
   return j;
@@ -928,7 +991,7 @@ async function cloudCall(method,path,body){
 function cloudChanged(){
   if(!cloudOn())return;
   cloudRev++;cloud.dirty=true;saveCloudMeta();
-  if(cloudHalt){setCloud('Sin sincronizar: hay un conflicto. Tocá “Sincronizar ahora” en Catálogo de precios.');return}
+  if(cloudHalt){setCloud('Sin sincronizar: hay un conflicto. Tocá “Sincronizar ahora” en la pestaña Nube y copias.');return}
   setCloud('Cambios sin subir a la nube…');
   clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,4000);
 }
@@ -969,8 +1032,10 @@ async function resolveConflict(r){
   cloudHalt=true;
   setCloud('Sin sincronizar: hay un conflicto. Tocá “Sincronizar ahora” cuando quieras resolverlo.');
 }
+function soloEjemplo(){return !!S.demo&&!hayReales(S)}
 async function cloudPush(){
   if(!cloudOn()||cloudHalt)return;
+  if(soloEjemplo()){setCloud('No se sube nada todavía: solo hay precios de ejemplo. Cargá tus precios y se sube solo.');return}
   if(cloudBusy){clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,1500);return}
   cloudBusy=true;var rev=cloudRev;
   try{
@@ -991,7 +1056,11 @@ async function cloudSync(){
   setCloud('Sincronizando…');
   try{
     var r=await cloudCall('GET','/datos');
-    if(!r.datos||r.version===0){cloud.ver=0;cloud.dirty=true;saveCloudMeta();await cloudPush();return}
+    if(!r.datos||r.version===0){
+      cloud.ver=0;
+      if(soloEjemplo()){cloud.dirty=false;saveCloudMeta();setCloud('La nube está vacía. Se va a llenar cuando cargues tus datos.');return}
+      cloud.dirty=true;saveCloudMeta();await cloudPush();return;
+    }
     if(r.version===cloud.ver){
       if(cloud.dirty)await cloudPush();else setCloud('Al día con la nube · '+hhmm(r.updated));
       return;
@@ -1003,24 +1072,18 @@ async function cloudSync(){
     await resolveConflict(r);
   }catch(e){setCloud('No se pudo sincronizar: '+e.message)}
 }
-$('#btnCloudOn').addEventListener('click',function(){
-  var url=$('#cloudUrl').value.trim().replace(/\/+$/,''),token=$('#cloudToken').value.trim();
-  if(!/^https:\/\//i.test(url)||!token){toast('Completá la dirección (con https://) y la clave.');return}
-  cloud={url:url,token:token,ver:0,dirty:true};cloudHalt=false;saveCloudMeta();
-  cloudSync().then(listarCopias);
-});
 $('#btnCloudSync').addEventListener('click',function(){
   if(!cloudOn()){toast('Primero conectá la nube.');return}
   cloudHalt=false;cloudSync().then(listarCopias);
 });
-$('#btnCloudOff').addEventListener('click',function(){
-  cloud=null;saveCloudMeta();cloudMsg='';copiasList=[];renderCopias();$('#cloudState').textContent='Desconectado. Tus datos siguen en este navegador.';
-  $('#cloudToken').value='';setStatus('local');
+$('#btnLogout').addEventListener('click',function(){
+  try{google.accounts.id.disableAutoSelect()}catch(e){}
+  clearTimeout(cloudTimer);
+  clearSession();showLogin('Cerraste sesión. Tus datos siguen guardados en este navegador y en la nube.',false);
 });
 document.addEventListener('visibilitychange',function(){
-  if(document.visibilityState==='visible'&&cloudOn()&&!cloud.dirty&&!cloudHalt)cloudSync();
+  if(document.visibilityState==='visible'&&cloudOn()&&auth&&!cloud.dirty&&!cloudHalt)cloudSync();
 });
-if(cloud){$('#cloudUrl').value=cloud.url;$('#cloudToken').value=cloud.token}
 
 /* ---------- Copias en la nube ---------- */
 var copiasList=[],copiasRecientes=[];
@@ -1191,7 +1254,7 @@ $('#btnKeepDemo').addEventListener('click',function(){S.demo=false;$('#demoNote'
 
 /* ---------- Pestañas ---------- */
 function showTab(t){
-  ['p','c','h'].forEach(function(k){
+  ['p','c','h','n'].forEach(function(k){
     $('#tab-'+k).hidden=k!==t;
     var b=$('[data-tab="'+k+'"]');
     b.setAttribute('aria-selected',String(k===t));
@@ -1199,6 +1262,101 @@ function showTab(t){
   if(t==='h')renderHistory();
 }
 $$('[data-tab]').forEach(function(b){b.addEventListener('click',function(){showTab(b.dataset.tab)})});
+
+/* ---------- Secciones plegables ---------- */
+var SEC_KEY='presupuestador-secciones';
+function readSec(){try{var o=JSON.parse(localStorage.getItem(SEC_KEY)||'{}');return o&&typeof o==='object'?o:{}}catch(e){return {}}}
+$$('details.sec').forEach(function(d){
+  if(readSec()[d.dataset.sec]===false)d.open=false;
+  d.addEventListener('toggle',function(){
+    var st=readSec();st[d.dataset.sec]=d.open;
+    try{localStorage.setItem(SEC_KEY,JSON.stringify(st))}catch(e){}
+  });
+});
+
+/* ---------- Entrada con Google ---------- */
+var AUTH_KEY='presupuestador-google';
+var auth=null,gisReady=false,gisWaiters=[];
+function parseJwt(t){
+  try{
+    var p=String(t).split('.')[1].replace(/-/g,'+').replace(/_/g,'/');while(p.length%4)p+='=';
+    var b=atob(p);
+    return JSON.parse(decodeURIComponent(Array.prototype.map.call(b,function(c){return '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)}).join('')));
+  }catch(e){return null}
+}
+function setSession(cred){
+  var p=parseJwt(cred);
+  if(!p||p.aud!==GOOGLE_CLIENT_ID||!p.exp)return false;
+  auth={cred:cred,email:p.email||'',name:p.name||'',exp:p.exp};
+  try{localStorage.setItem(AUTH_KEY,cred)}catch(e){}
+  return true;
+}
+function clearSession(){auth=null;try{localStorage.removeItem(AUTH_KEY)}catch(e){}}
+function tokenFresh(){return !!auth&&auth.exp>Date.now()/1000+90}
+function whenGis(fn,tries){
+  tries=tries||0;
+  if(window.google&&google.accounts&&google.accounts.id){fn();return}
+  if(tries>100){$('#loginMsg').textContent='No pude cargar el acceso de Google. Revisá tu conexión y recargá la página.';return}
+  setTimeout(function(){whenGis(fn,tries+1)},100);
+}
+function gisInit(){
+  if(gisReady)return;
+  google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:onCred,auto_select:true,cancel_on_tap_outside:false});
+  gisReady=true;
+}
+function onCred(resp){
+  var w=gisWaiters.splice(0);
+  if(resp&&resp.credential&&setSession(resp.credential)){
+    w.forEach(function(x){x.res(auth.cred)});
+    unlock();
+  }else{
+    w.forEach(function(x){x.rej({status:401,message:'No se pudo entrar con Google.'})});
+  }
+}
+function getToken(){
+  if(tokenFresh())return Promise.resolve(auth.cred);
+  return new Promise(function(res,rej){
+    var w={res:res,rej:rej};gisWaiters.push(w);
+    whenGis(function(){gisInit();try{google.accounts.id.prompt()}catch(e){}});
+    setTimeout(function(){
+      var i=gisWaiters.indexOf(w);
+      if(i>=0){gisWaiters.splice(i,1);rej({status:401,message:'Tu sesión de Google venció. Entrá de nuevo.'})}
+    },10000);
+  });
+}
+function showLogin(msg,tryPrompt){
+  document.body.classList.add('locked');
+  $('#loginMsg').textContent=msg||'';
+  whenGis(function(){
+    gisInit();
+    var el=$('#gBtn');el.innerHTML='';
+    google.accounts.id.renderButton(el,{theme:'outline',size:'large',text:'signin_with',shape:'rectangular',locale:'es'});
+    if(tryPrompt){try{google.accounts.id.prompt()}catch(e){}}
+  });
+}
+function requireLogin(msg){clearSession();showLogin(msg||'Tu sesión de Google venció. Entrá de nuevo.',false)}
+function unlock(){
+  var estabaBloqueada=document.body.classList.contains('locked');
+  document.body.classList.remove('locked');
+  $('#acctEmail').textContent=auth?auth.email:'—';
+  if(!estabaBloqueada)return;
+  if(!cloud)cloud={ver:0,dirty:true};
+  cloud.url=WORKER_URL;saveCloudMeta();
+  cloudHalt=false;
+  window.scrollTo(0,0);
+  cloudSync().then(listarCopias);
+}
+function startAuth(){
+  if(!GOOGLE_CLIENT_ID||/^PEGAR/i.test(GOOGLE_CLIENT_ID)){
+    document.body.classList.add('locked');
+    $('#loginMsg').textContent='Falta configurar el ID de cliente de Google en index.html (la línea GOOGLE_CLIENT_ID). Los pasos están en el README.';
+    return;
+  }
+  var saved=null;try{saved=localStorage.getItem(AUTH_KEY)}catch(e){}
+  if(saved&&setSession(saved)&&tokenFresh()){unlock();whenGis(gisInit);return}
+  clearSession();
+  showLogin(saved?'Tu sesión venció. Entrá de nuevo.':'',true);
+}
 
 /* ---------- Inicio ---------- */
 function renderAll(){
@@ -1209,7 +1367,7 @@ renderPrev();
 renderAll();
 setStatus('local');
 initDb();
-if(cloudOn())cloudSync().then(listarCopias);
+startAuth();
 })();
 </script>
 </body>
