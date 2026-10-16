@@ -147,6 +147,13 @@ div.l-desc .f{flex:1 1 140px}
 .actions{display:grid;gap:8px;margin-top:16px}
 .confirm{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;font-size:14px}
 .confirm span{flex:1 1 100%}
+.emp{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:12px}
+.emp .wide{grid-column:1/-1}
+.emp textarea{width:100%;font:inherit;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:8px 10px;resize:vertical}
+.logo-row{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.logo-box{width:140px;height:70px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px dashed var(--line);border-radius:4px;color:#777;font-size:12px;overflow:hidden}
+.logo-box img{max-width:100%;max-height:100%;object-fit:contain}
+.logo-btns{display:flex;gap:8px;flex-wrap:wrap}
 .fallback{width:100%;min-height:150px;margin-top:10px;font:13px/1.4 var(--f-mono);color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:10px}
 
 /* Catálogo */
@@ -229,6 +236,7 @@ body.locked .login{display:flex}
 }
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 </head>
 <body class="locked">
 
@@ -333,7 +341,7 @@ body.locked .login{display:flex}
           <summary><h2 class="h"><span class="stub earth"></span>Totales</h2><span class="sec-sum" id="sumTot"></span><i class="chev" aria-hidden="true"></i></summary>
           <dl class="tot" id="tot"></dl>
           <div class="actions">
-            <button type="button" class="btn primary" id="btnCopy">Copiar resumen para el cliente</button>
+            <button type="button" class="btn primary" id="btnPdf">Descargar PDF para el cliente</button>
             <button type="button" class="btn" id="btnSync">Actualizar precios desde el catálogo</button>
             <button type="button" class="btn" id="btnNew">Nuevo presupuesto</button>
           </div>
@@ -342,7 +350,27 @@ body.locked .login{display:flex}
             <button type="button" class="btn small danger" id="btnNewYes">Sí, empezar uno nuevo</button>
             <button type="button" class="btn small" id="btnNewNo">Cancelar</button>
           </div>
-          <textarea id="fallback" class="fallback" readonly hidden aria-label="Resumen para copiar"></textarea>
+        </details>
+
+        <details class="panel sec" data-sec="empresa">
+          <summary><h2 class="h"><span class="stub brown"></span>Empresa y logo</h2><span class="sec-sum" id="sumEmp"></span><i class="chev" aria-hidden="true"></i></summary>
+          <p class="hint" style="margin:8px 0 0">Estos datos salen en el encabezado del PDF. Son los mismos para todos tus presupuestos.</p>
+          <div class="emp">
+            <div class="logo-row">
+              <div class="logo-box" id="logoBox"><span id="logoNone">Sin logo</span><img id="logoPrev" alt="Logo de la empresa" hidden></div>
+              <div class="logo-btns">
+                <button type="button" class="btn small" id="btnLogo">Elegir logo</button>
+                <button type="button" class="btn small" id="btnLogoDel" hidden>Quitar logo</button>
+                <input type="file" id="fileLogo" accept="image/*" hidden>
+              </div>
+            </div>
+            <label class="f wide"><span class="lbl">Nombre de la empresa</span><input data-e="nombre" autocomplete="off" placeholder="Ej.: Gómez Instalaciones Eléctricas"></label>
+            <label class="f"><span class="lbl">CUIT (opcional)</span><input data-e="cuit" autocomplete="off" inputmode="numeric" placeholder="20-12345678-9"></label>
+            <label class="f"><span class="lbl">Teléfono</span><input data-e="tel" autocomplete="off" inputmode="tel"></label>
+            <label class="f wide"><span class="lbl">Mail</span><input data-e="email" type="email" autocomplete="off"></label>
+            <label class="f wide"><span class="lbl">Dirección o ciudad</span><input data-e="dir" autocomplete="off"></label>
+            <label class="f wide"><span class="lbl">Condiciones al pie (opcional)</span><textarea data-e="pie" rows="3" placeholder="Ej.: Forma de pago: 50% al comenzar y 50% al terminar."></textarea></label>
+          </div>
         </details>
       </aside>
     </div>
@@ -540,6 +568,9 @@ function loadLocal(){try{var r=localStorage.getItem(KEY);if(!r)return null;var o
 function saveLocal(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
 function normalize(){
+  if(!S.empresa||typeof S.empresa!=='object')S.empresa={};
+  ['nombre','cuit','tel','email','dir','pie','logo'].forEach(function(k){if(typeof S.empresa[k]!=='string')S.empresa[k]=''});
+  if(typeof S.empresa.logoAR!=='number'||!(S.empresa.logoAR>0))S.empresa.logoAR=0;
   if(!Array.isArray(S.archivo))S.archivo=[];
   if(!S.pres.id)S.pres.id=uid();
   S.archivo=S.archivo.filter(function(p){return p&&Array.isArray(p.materiales)&&Array.isArray(p.mano)&&p.ajustes});
@@ -863,40 +894,206 @@ catEl.addEventListener('click',function(e){
 var tt=0;
 function toast(m){var t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(function(){t.hidden=true},4500)}
 
-function summaryText(){
-  var p=S.pres,a=p.ajustes,c=calc(),f=1+num(a.margen)/100,m=mode(),L=[];
-  L.push('PRESUPUESTO N° '+(p.numero||'-')+'  ·  '+dmy(p.fecha));
-  if(p.cliente)L.push('Cliente: '+p.cliente);
-  if(p.obra)L.push('Trabajo: '+p.obra+(p.tipo?' ('+p.tipo+')':''));
-  if(p.materiales.length){
-    L.push('','MATERIALES');
-    p.materiales.forEach(function(l){L.push('- '+(l.desc||'Sin descripción')+': '+fmtQ(num(l.cant))+' '+(l.unidad||'')+' = '+money.format(matCost(l,m)*f))});
-  }
-  if(p.mano.length){
-    L.push('','MANO DE OBRA');
-    p.mano.forEach(function(l){L.push('- '+(l.desc||'Sin descripción')+': '+fmtQ(num(l.cant))+' '+(l.unidad||'')+' x '+money.format(num(l.precio))+' = '+money.format(num(l.cant)*num(l.precio)))});
-  }
-  L.push('');
-  if(c.tras)L.push('Traslado: '+money.format(c.tras));
-  if(c.imp)L.push('Imprevistos ('+num(a.imprevistos)+'%): '+money.format(c.imp));
-  L.push('Subtotal: '+money.format(c.sub));
-  if(a.ivaOn)L.push('IVA ('+num(a.iva)+'%): '+money.format(c.iva));
-  L.push('TOTAL: '+money.format(c.total));
-  L.push('','Válido por '+(num(p.validez)||15)+' días. Precios en pesos argentinos.');
-  return L.join('\n');
+/* ---------- Empresa y logo ---------- */
+function renderEmpresa(){
+  var e=S.empresa;
+  $$('[data-e]').forEach(function(el){if(document.activeElement!==el)el.value=e[el.dataset.e]||''});
+  var img=$('#logoPrev');
+  if(e.logo){img.src=e.logo;img.hidden=false;$('#logoNone').hidden=true}else{img.hidden=true;img.removeAttribute('src');$('#logoNone').hidden=false}
+  $('#btnLogoDel').hidden=!e.logo;
+  $('#btnLogo').textContent=e.logo?'Cambiar logo':'Elegir logo';
+  $('#sumEmp').textContent=e.nombre||'';
 }
-async function copyText(t){
-  var fb=$('#fallback');
-  try{
-    await navigator.clipboard.writeText(t);
-    fb.hidden=true;
-    toast('Resumen copiado. Pegalo en WhatsApp o en un mail.');
-  }catch(e){
-    fb.hidden=false;fb.value=t;fb.focus();fb.select();
-    toast('No pude copiar solo. El texto quedó seleccionado: copialo con Ctrl+C.');
-  }
+$$('[data-e]').forEach(function(el){
+  el.addEventListener('input',function(){S.empresa[el.dataset.e]=el.value;$('#sumEmp').textContent=S.empresa.nombre||'';persist()});
+});
+$('#btnLogo').addEventListener('click',function(){$('#fileLogo').click()});
+$('#btnLogoDel').addEventListener('click',function(){S.empresa.logo='';S.empresa.logoAR=0;renderEmpresa();persist()});
+// Achica el logo (máximo 400 px de lado) para que no pese en la nube ni en las copias.
+$('#fileLogo').addEventListener('change',function(ev){
+  var f=ev.target.files&&ev.target.files[0];ev.target.value='';
+  if(!f)return;
+  if(!/^image\//.test(f.type)){toast('Elegí un archivo de imagen (PNG o JPG).');return}
+  var rd=new FileReader();
+  rd.onerror=function(){toast('No pude leer la imagen.')};
+  rd.onload=function(){
+    var im=new Image();
+    im.onerror=function(){toast('No pude abrir esa imagen. Probá con un PNG o JPG.')};
+    im.onload=function(){
+      var w=im.naturalWidth||im.width||300,h=im.naturalHeight||im.height||150,k=Math.min(1,400/Math.max(w,h));
+      w=Math.max(1,Math.round(w*k));h=Math.max(1,Math.round(h*k));
+      var cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      var cx=cv.getContext('2d');cx.drawImage(im,0,0,w,h);
+      var out=cv.toDataURL('image/png');
+      if(out.length>220000){ // muy pesado (una foto, por ejemplo): pasar a JPG sobre fondo blanco
+        cx.globalCompositeOperation='destination-over';cx.fillStyle='#fff';cx.fillRect(0,0,w,h);
+        out=cv.toDataURL('image/jpeg',0.85);
+      }
+      S.empresa.logo=out;S.empresa.logoAR=w/h;
+      renderEmpresa();persist();toast('Logo cargado.');
+    };
+    im.src=String(rd.result);
+  };
+  rd.readAsDataURL(f);
+});
+
+/* ---------- PDF para el cliente ---------- */
+// jsPDF usa fuentes estándar: se reemplazan o sacan los caracteres que no tienen.
+function pdfT(x){
+  return String(x==null?'':x)
+    .replace(/[\u00a0\u202f]/g,' ').replace(/[\u2018\u2019]/g,"'").replace(/[\u201c\u201d]/g,'"')
+    .replace(/[\u2013\u2014]/g,'-').replace(/\u2026/g,'...').replace(/\u2022/g,'-')
+    .replace(/\u03a9/g,'ohm').replace(/\u2265/g,'>=').replace(/\u2264/g,'<=')
+    .replace(/[^\u0020-\u00ff\n]/g,'');
 }
-$('#btnCopy').addEventListener('click',function(){copyText(summaryText())});
+function pdfMoney(n){return pdfT(money.format(n))}
+function slug(x){return String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)}
+
+function buildPdf(p){
+  var J=window.jspdf&&window.jspdf.jsPDF;
+  if(!J)return null;
+  var E=S.empresa,a=p.ajustes,c=calcP(p),f=1+num(a.margen)/100,m=a.compra==='entera'?'entera':'prop';
+  var doc=new J({unit:'mm',format:'a4',compress:true});
+  var W=210,H=297,M=15,CW=W-2*M,BOT=H-22;
+  var INK=[30,34,40],MUT=[105,112,122],ACC=[31,58,95],SOFT=[244,246,249],LINE=[218,222,229];
+  var y=M;
+  function col(c2,t){t?doc.setTextColor(c2[0],c2[1],c2[2]):doc.setDrawColor(c2[0],c2[1],c2[2])}
+  function font(sz,b){doc.setFont('helvetica',b?'bold':'normal');doc.setFontSize(sz)}
+  function lines(txt,w){return doc.splitTextToSize(pdfT(txt),w)}
+
+  /* Encabezado */
+  var lx=M,hdrH=0;
+  if(E.logo&&E.logoAR>0){
+    var lw=46,lh=lw/E.logoAR;if(lh>22){lh=22;lw=lh*E.logoAR}
+    try{doc.addImage(E.logo,/^data:image\/jpe?g/i.test(E.logo)?'JPEG':'PNG',M,y,lw,lh)}catch(e){lw=0;lh=0}
+    if(lw){lx=M+lw+6;hdrH=Math.max(hdrH,lh)}
+  }
+  var ty=y+4,rightX=W-M,leftW=rightX-lx-62;
+  if(E.nombre){font(15,true);col(ACC,true);var nl=lines(E.nombre,leftW);doc.text(nl,lx,ty+1);ty+=nl.length*6.2}
+  var det=[];
+  if(E.cuit)det.push('CUIT: '+E.cuit);
+  if(E.dir)det.push(E.dir);
+  font(8.5,false);col(MUT,true);
+  var tl=E.tel?'Tel.: '+E.tel:'',ct=[tl,E.email||''].filter(Boolean).join('  ·  ');
+  if(ct&&doc.getTextWidth(pdfT(ct))<=leftW)det.push(ct);else{if(tl)det.push(tl);if(E.email)det.push(E.email)}
+  det.forEach(function(d){lines(d,leftW).forEach(function(l){doc.text(l,lx,ty+1);ty+=4})});
+  hdrH=Math.max(hdrH,ty-y);
+  // Bloque derecho
+  font(20,true);col(ACC,true);doc.text('PRESUPUESTO',rightX,y+6,{align:'right'});
+  font(10.5,true);col(INK,true);doc.text('N° '+pdfT(p.numero||'-'),rightX,y+13,{align:'right'});
+  font(9,false);col(MUT,true);
+  doc.text('Fecha: '+dmy(p.fecha),rightX,y+18.5,{align:'right'});
+  doc.text('Válido por '+(num(p.validez)||15)+' días',rightX,y+23,{align:'right'});
+  hdrH=Math.max(hdrH,25);
+  y+=hdrH+4;
+  col(ACC,false);doc.setLineWidth(0.8);doc.line(M,y,W-M,y);
+  y+=7;
+
+  /* Cliente y trabajo */
+  var cw=(CW-6)/2;
+  font(10.5,true);var cl=lines(p.cliente||'-',cw-8);
+  font(9.5,false);var ol=lines((p.obra||'-'),cw-8);
+  var th=p.tipo?4.5:0;
+  var bh=Math.max(cl.length*5,ol.length*4.4+th)+13;
+  doc.setFillColor(SOFT[0],SOFT[1],SOFT[2]);doc.roundedRect(M,y,cw,bh,1.5,1.5,'F');doc.roundedRect(M+cw+6,y,cw,bh,1.5,1.5,'F');
+  font(7.5,true);col(MUT,true);doc.text('CLIENTE',M+4,y+5.5);doc.text('TRABAJO',M+cw+10,y+5.5);
+  font(10.5,true);col(INK,true);doc.text(cl,M+4,y+11);
+  font(9.5,false);doc.text(ol,M+cw+10,y+11);
+  if(p.tipo){font(8.5,false);col(MUT,true);doc.text(pdfT(p.tipo),M+cw+10,y+11+ol.length*4.4+1)}
+  y+=bh+8;
+
+  /* Encabezado repetido en las páginas siguientes */
+  function newPage(){
+    doc.addPage();y=M;
+    font(9,true);col(ACC,true);doc.text(pdfT(E.nombre||'Presupuesto'),M,y+3);
+    font(9,false);col(MUT,true);doc.text('Presupuesto N° '+pdfT(p.numero||'-')+' · '+pdfT(p.cliente||''),W-M,y+3,{align:'right'});
+    col(LINE,false);doc.setLineWidth(0.3);doc.line(M,y+6,W-M,y+6);
+    y+=12;
+  }
+  var X={d:M+2,q:M+84+20,u:M+84+22,pu:M+84+20+18+28,im:W-M-2};
+  function tableHead(title){
+    font(10.5,true);col(ACC,true);doc.text(title,M,y+3);y+=6;
+    doc.setFillColor(ACC[0],ACC[1],ACC[2]);doc.rect(M,y,CW,7,'F');
+    font(8,true);doc.setTextColor(255,255,255);
+    doc.text('DESCRIPCIÓN',X.d,y+4.7);doc.text('CANT.',X.q,y+4.7,{align:'right'});doc.text('UNIDAD',X.u,y+4.7);
+    doc.text('P. UNIT.',X.pu,y+4.7,{align:'right'});doc.text('IMPORTE',X.im,y+4.7,{align:'right'});
+    y+=7;
+  }
+  function table(title,rows){
+    if(!rows.length)return;
+    if(y+30>BOT)newPage();
+    tableHead(title);
+    rows.forEach(function(r,i){
+      font(9,false);
+      var dl=lines(r.desc,78),rh=Math.max(7,dl.length*4.1+3.2);
+      if(y+rh>BOT){newPage();tableHead(title+' (continuación)');font(9,false)}
+      if(i%2===1){doc.setFillColor(SOFT[0],SOFT[1],SOFT[2]);doc.rect(M,y,CW,rh,'F')}
+      col(INK,true);doc.text(dl,X.d,y+4.6);
+      var cy=y+4.6;
+      doc.text(pdfT(fmtQ(r.cant)),X.q,cy,{align:'right'});
+      doc.text(pdfT(r.unidad||''),X.u,cy);
+      doc.text(r.cant>0?pdfMoney(r.imp/r.cant):'-',X.pu,cy,{align:'right'});
+      font(9,true);doc.text(pdfMoney(r.imp),X.im,cy,{align:'right'});
+      col(LINE,false);doc.setLineWidth(0.2);doc.line(M,y+rh,W-M,y+rh);
+      y+=rh;
+    });
+    y+=7;
+  }
+  table('MATERIALES',p.materiales.map(function(l){return {desc:l.desc||'Sin descripción',cant:num(l.cant),unidad:l.unidad,imp:matCost(l,m)*f}}));
+  table('MANO DE OBRA',p.mano.map(function(l){return {desc:l.desc||'Sin descripción',cant:num(l.cant),unidad:l.unidad,imp:num(l.cant)*num(l.precio)}}));
+
+  /* Totales */
+  var tot=[['Materiales',c.mat+c.gan],['Mano de obra',c.mo]];
+  if(c.tras)tot.push(['Traslado',c.tras]);
+  if(c.imp)tot.push(['Imprevistos ('+num(a.imprevistos)+'%)',c.imp]);
+  tot.push(['Subtotal',c.sub]);
+  if(a.ivaOn)tot.push(['IVA ('+num(a.iva)+'%)',c.iva]);
+  var bw=82,bx=W-M-bw,need=tot.length*6.5+16;
+  if(y+need>BOT)newPage();
+  font(9.5,false);
+  tot.forEach(function(r,i){
+    var isSub=r[0]==='Subtotal';
+    font(9.5,isSub);col(isSub?INK:MUT,true);doc.text(pdfT(r[0]),bx+2,y+4.4);
+    col(INK,true);doc.text(pdfMoney(r[1]),W-M-2,y+4.4,{align:'right'});
+    y+=6.5;
+    if(isSub){col(LINE,false);doc.setLineWidth(0.2);doc.line(bx,y-0.8,W-M,y-0.8)}
+  });
+  y+=1.5;
+  doc.setFillColor(ACC[0],ACC[1],ACC[2]);doc.roundedRect(bx,y,bw,11,1.5,1.5,'F');
+  font(11,true);doc.setTextColor(255,255,255);doc.text('TOTAL',bx+4,y+7.3);
+  font(13,true);doc.text(pdfMoney(c.total),W-M-4,y+7.5,{align:'right'});
+  y+=19;
+
+  /* Condiciones */
+  var cond=['Presupuesto válido por '+(num(p.validez)||15)+' días desde la fecha de emisión. Importes en pesos argentinos.'];
+  if(E.pie&&E.pie.trim())cond.push(E.pie.trim());
+  font(8.5,false);
+  var cl2=[];cond.forEach(function(t){cl2=cl2.concat(lines(t,CW));});
+  if(y+cl2.length*4+10>BOT)newPage();
+  font(8,true);col(MUT,true);doc.text('CONDICIONES',M,y+2);y+=6;
+  font(8.5,false);col(INK,true);doc.text(cl2,M,y+1,{lineHeightFactor:1.35});
+
+  /* Pie de página en todas las hojas */
+  var n=doc.getNumberOfPages();
+  for(var i=1;i<=n;i++){
+    doc.setPage(i);
+    col(LINE,false);doc.setLineWidth(0.3);doc.line(M,H-16,W-M,H-16);
+    font(8,false);col(MUT,true);
+    var fl=[E.nombre,E.tel,E.email].filter(Boolean).join('  ·  ');
+    doc.text(pdfT(fl),M,H-11);
+    doc.text('Página '+i+' de '+n,W-M,H-11,{align:'right'});
+  }
+  return doc;
+}
+function downloadPdf(p){
+  var doc;
+  try{doc=buildPdf(p)}catch(e){toast('No se pudo armar el PDF: '+(e&&e.message||'error'));return}
+  if(!doc){toast('No se pudo cargar el generador de PDF. Revisá tu conexión y recargá la página.');return}
+  var name='Presupuesto-'+(slug(p.numero)||'sin-numero')+(p.cliente?'-'+slug(p.cliente):'')+'.pdf';
+  doc.save(name);
+  toast(S.empresa.nombre?'PDF descargado.':'PDF descargado. Cargá el nombre y el logo en “Empresa y logo” para que salgan en el encabezado.');
+}
+$('#btnPdf').addEventListener('click',function(){downloadPdf(S.pres)});
 
 function syncLinesFromCatalog(){
   var by={};S.catalogo.forEach(function(c){by[c.id]=c});
@@ -1190,7 +1387,7 @@ function newBudget(){
   S.pres.fecha=todayISO();S.pres.cliente='';S.pres.obra='';S.pres.tipo='Instalación nueva';S.pres.validez=15;
   S.pres.materiales=[];S.pres.mano=[];
   S.demo=false;
-  $('#confirmNew').hidden=true;$('#fallback').hidden=true;
+  $('#confirmNew').hidden=true;
   renderAll();persist();
 }
 function hLabel(p){return 'Presupuesto '+(p.numero||'sin número')}
@@ -1201,8 +1398,8 @@ function histRowHTML(p,cur){
     '<div class="h-info"><b>'+esc(hLabel(p))+(cur?'<span class="h-tag">'+(S.demo?'Ejemplo':'En edición')+'</span>':'')+' · '+esc(p.cliente||'Sin cliente')+'</b>'+
     '<small>'+esc(p.obra||'Sin descripción')+'</small><small>'+esc(sub)+'</small></div>'+
     '<span class="h-total">'+money.format(t)+'</span><div class="h-acts">';
-  h+=cur?'<button class="btn small" type="button" data-hopen>Ir al presupuesto</button>'
-        :'<button class="btn small primary" type="button" data-hopen>Abrir</button><button class="btn small" type="button" data-hdup>Duplicar</button><button class="x" type="button" data-hdel aria-label="Borrar presupuesto">×</button>';
+  h+=cur?'<button class="btn small" type="button" data-hopen>Ir al presupuesto</button><button class="btn small" type="button" data-hpdf>PDF</button>'
+        :'<button class="btn small primary" type="button" data-hopen>Abrir</button><button class="btn small" type="button" data-hpdf>PDF</button><button class="btn small" type="button" data-hdup>Duplicar</button><button class="x" type="button" data-hdel aria-label="Borrar presupuesto">×</button>';
   return h+'</div></div>';
 }
 var hQuery='';
@@ -1216,6 +1413,10 @@ $('#hSearch').addEventListener('input',function(e){hQuery=e.target.value.trim();
 $('#hList').addEventListener('click',function(e){
   var row=e.target.closest('.hrow');if(!row)return;
   var id=row.dataset.id;
+  if(e.target.closest('[data-hpdf]')){
+    var pp=id===S.pres.id?S.pres:S.archivo.find(function(x){return x.id===id});
+    if(pp)downloadPdf(pp);return;
+  }
   if(e.target.closest('[data-hopen]')){
     if(id===S.pres.id){showTab('p');return}
     var p=S.archivo.find(function(x){return x.id===id});if(!p)return;
@@ -1266,7 +1467,7 @@ $$('[data-tab]').forEach(function(b){b.addEventListener('click',function(){showT
 var SEC_KEY='presupuestador-secciones';
 function readSec(){try{var o=JSON.parse(localStorage.getItem(SEC_KEY)||'{}');return o&&typeof o==='object'?o:{}}catch(e){return {}}}
 $$('details.sec').forEach(function(d){
-  if(readSec()[d.dataset.sec]===false)d.open=false;
+  var sv=readSec()[d.dataset.sec];if(sv===false)d.open=false;else if(sv===true)d.open=true;
   d.addEventListener('toggle',function(){
     var st=readSec();st[d.dataset.sec]=d.open;
     try{localStorage.setItem(SEC_KEY,JSON.stringify(st))}catch(e){}
@@ -1359,7 +1560,7 @@ function startAuth(){
 
 /* ---------- Inicio ---------- */
 function renderAll(){
-  renderMeta();renderLines('mat');renderLines('mo');renderTotals();renderCatalog();refreshDatalists();renderHistory();
+  renderMeta();renderLines('mat');renderLines('mo');renderTotals();renderCatalog();refreshDatalists();renderHistory();renderEmpresa();
   $('#demoNote').hidden=!S.demo;
 }
 renderPrev();
