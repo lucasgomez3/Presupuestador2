@@ -1,0 +1,16 @@
+{
+  "name": "Presupuestador Eléctrico",
+  "short_name": "Presupuestos",
+  "description": "Presupuestos de instalaciones y reparaciones eléctricas.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#11161b",
+  "theme_color": "#11161b",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
